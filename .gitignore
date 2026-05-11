@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+.env
+.env.local
+.DS_Store
+.vscode
+data/*.sqlite
+data/write-test.txt
+data/uploads/*
+!data/uploads/.gitkeep
