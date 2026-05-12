@@ -22,10 +22,10 @@ Sara can:
 
 Included:
 
-- Local personal app.
-- SQLite persistence.
+- Personal web app that can run locally or on Vercel.
+- Supabase/Postgres persistence for deployed runtime compatibility.
 - Local JSON/upload export snapshots for safe Supabase migration preparation.
-- Image URL, paste, drag/drop, and file upload support.
+- Image URL, paste, drag/drop, and file upload support through Supabase Storage.
 - Ingredients and nutritional information stored as pasted/uploaded reference images.
 - Home, Meals, Orders, Add/Edit, and Detail screens.
 - Removed status to hide meals from default views.

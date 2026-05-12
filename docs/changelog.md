@@ -6,11 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Initial project setup
+- 2026-05-12: Added Supabase/Postgres schema migration and Storage/RLS migration notes. Files affected: `supabase/migrations/202605120001_create_meal_tracker_schema.sql`, `docs/supabase-migration.md`, `README.md`, `docs/rules.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`, `public/app.js`.
 - 2026-05-12: Added read-only SQLite/export snapshot process for Supabase migration preparation. Files affected: `scripts/export-sqlite-backup.js`, `backup/exports/.gitkeep`, `.gitignore`, `package.json`, `README.md`, `masterplan.md`, `tasks.md`, `docs/masterplan.md`, `docs/rules.md`, `docs/tasks.md`, `docs/changelog.md`, `public/app.js`.
 - 2026-05-04: Added changelog documentation structure and rules. Files affected: `docs/changelog.md`, `tasks.md`.
 - 2026-05-04: Added in-app Documentation Center routes and pages. Files affected: `public/app.js`, `public/styles.css`, `server.js`, `docs/rules.md`, `docs/changelog.md`, `tasks.md`.
 
 ### Changed
+- 2026-05-12: Replaced runtime SQLite/local upload access with Supabase Postgres REST and Supabase Storage access. Files affected: `server.js`, `.env.example`, `package.json`, `README.md`, `masterplan.md`, `tasks.md`, `docs/masterplan.md`, `docs/rules.md`, `docs/tasks.md`, `docs/changelog.md`, `public/app.js`, `docs/supabase-migration.md`.
 - 2026-05-10: Completed remaining verification tasks for edit flow, remove flow, pasted screenshot persistence, and mobile usability. Files affected: `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-04: Updated project knowledge workflow and added docs-folder masterplan/tasks sources. Files affected: `docs/project-knowledge.md`, `docs/masterplan.md`, `docs/tasks.md`, `docs/rules.md`, `docs/changelog.md`, `tasks.md`, `public/app.js`.
 

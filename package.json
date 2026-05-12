@@ -2,7 +2,7 @@
   "name": "meal-tracker-local",
   "version": "1.0.0",
   "private": true,
-  "description": "Local personal meal rating tracker with SQLite persistence.",
+  "description": "Personal meal rating tracker with Supabase persistence.",
   "type": "module",
   "scripts": {
     "start": "node server.js",

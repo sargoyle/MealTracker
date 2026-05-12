@@ -864,7 +864,7 @@ function docsHomeContent(metrics) {
   return `
     <div class="docs-intro">
       <h2>Project Overview</h2>
-      <p>Meal Tracker is a local personal app for remembering which meals to reorder, which were fine, and which to avoid. It runs on this PC, stores data in SQLite, and keeps meal images plus pasted ingredients and nutrition screenshots in local upload storage.</p>
+    <p>Meal Tracker is a personal app for remembering which meals to reorder, which were fine, and which to avoid. The current runtime stores meal data in Supabase Postgres and keeps meal images plus pasted ingredients and nutrition screenshots in Supabase Storage.</p>
     </div>
     <section class="docs-metric-grid">
       <div><strong>${metrics.meals.length}</strong><span>Total meals</span></div>
@@ -897,7 +897,7 @@ function docsHomeContent(metrics) {
 const docsPageSummaries = {
   architecture: "Tech stack, folder structure, frontend/backend connection, and database schema.",
   components: "Major frontend render functions, shared helpers, and their inputs.",
-  "data-flow": "How user actions move through the UI, API, SQLite database, and back.",
+  "data-flow": "How user actions move through the UI, API, Supabase Postgres, and back.",
   api: "REST endpoints, request shapes, responses, and fetch examples.",
   dependencies: "Runtime, browser APIs, local storage dependencies, and removal impact.",
 };
@@ -905,13 +905,14 @@ const docsPageSummaries = {
 function architectureDocs() {
   return `
     <h2>System Architecture</h2>
-    <p>The app is a local web app served by Node. The frontend is static HTML, CSS, and JavaScript in <code>public/</code>; the backend is <code>server.js</code>; data persists to <code>data/meals.sqlite</code>. Project knowledge lives in <code>docs/masterplan.md</code>, <code>docs/tasks.md</code>, <code>docs/rules.md</code>, and <code>docs/changelog.md</code>.</p>
+    <p>The app is served by Node. The frontend is static HTML, CSS, and JavaScript in <code>public/</code>; the backend is <code>server.js</code>; runtime data persists to Supabase Postgres. Project knowledge lives in <code>docs/masterplan.md</code>, <code>docs/tasks.md</code>, <code>docs/rules.md</code>, and <code>docs/changelog.md</code>.</p>
     ${docsTable(["Layer", "Current implementation", "Purpose"], [
       ["Frontend", "<code>public/index.html</code>, <code>public/app.js</code>, <code>public/styles.css</code>", "Single-page app, routing, forms, tables, filtering, and dark UI."],
-      ["Backend", "<code>server.js</code>", "Local HTTP server, REST API, validation, uploads, and static file serving."],
-      ["Database", "<code>data/meals.sqlite</code>", "Persistent meal records and dinner order history."],
-      ["Uploads", "<code>data/uploads/</code>", "Saved pasted, dropped, or selected image files."],
+      ["Backend", "<code>server.js</code>", "HTTP server, REST API, validation, Supabase data access, Storage uploads, and static file serving."],
+      ["Database", "Supabase Postgres", "Persistent meal records and dinner order history."],
+      ["Uploads", "Supabase Storage bucket <code>meal-images</code>", "Saved pasted, dropped, or selected image files."],
       ["Backup exports", "<code>scripts/export-sqlite-backup.js</code> and <code>backup/exports/</code>", "Read-only JSON and upload snapshots for Supabase migration preparation."],
+      ["Supabase migration", "<code>supabase/migrations/</code> and <code>docs/supabase-migration.md</code>", "Postgres schema and Storage plan for the future Vercel-compatible runtime."],
       ["Project docs", "<code>docs/masterplan.md</code>, <code>docs/tasks.md</code>, <code>docs/rules.md</code>, <code>docs/changelog.md</code>", "Source of truth for vision, implementation order, decisions, and history."],
     ])}
     <section class="docs-section">
@@ -925,12 +926,15 @@ function architectureDocs() {
         "    app.js",
         "    styles.css",
         "  data/",
-        "    meals.sqlite",
-        "    uploads/",
+        "    meals.sqlite       # legacy export source only",
+        "    uploads/           # legacy export source only",
         "  scripts/",
         "    export-sqlite-backup.js",
         "  backup/",
         "    exports/",
+        "  supabase/",
+        "    migrations/",
+        "      202605120001_create_meal_tracker_schema.sql",
         "  docs/",
         "    project-knowledge.md",
         "    rules.md",
@@ -944,11 +948,15 @@ function architectureDocs() {
     </section>
     <section class="docs-section">
       <h2>Frontend And Backend Connection</h2>
-      <p>The browser renders routes and calls <code>fetch()</code> through the shared <code>api()</code> helper. The Node server handles <code>/api/*</code>, validates input, updates SQLite, and returns JSON. Image uploads are posted as data URLs and returned as local <code>/uploads/*</code> paths.</p>
+      <p>The browser renders routes and calls <code>fetch()</code> through the shared <code>api()</code> helper. The Node server handles <code>/api/*</code>, validates input, updates Supabase Postgres, and returns JSON. Image uploads are posted as data URLs and returned as Supabase Storage URLs.</p>
     </section>
     <section class="docs-section">
       <h2>Migration Export</h2>
-      <p><code>npm run export:backup</code> creates a timestamped snapshot under <code>backup/exports/</code> with <code>meals.json</code>, <code>meal_orders.json</code>, copied uploads, and manifests. It opens SQLite read-only and does not change app runtime behaviour.</p>
+      <p><code>npm run export:backup</code> creates a timestamped snapshot under <code>backup/exports/</code> with <code>meals.json</code>, <code>meal_orders.json</code>, copied uploads, and manifests. It opens the old SQLite database read-only and is kept for migration safety.</p>
+    </section>
+    <section class="docs-section">
+      <h2>Supabase Preparation</h2>
+      <p><code>supabase/migrations/202605120001_create_meal_tracker_schema.sql</code> creates equivalent Postgres tables for <code>meals</code> and <code>meal_orders</code>, keeps UUID IDs importable, adds current validation checks, indexes list/order access patterns, and provides a compatibility view named <code>meal_with_stats</code>. Storage and RLS notes live in <code>docs/supabase-migration.md</code>.</p>
     </section>
     <section class="docs-section">
       <h2>Database Schema Overview</h2>
@@ -1002,7 +1010,7 @@ function dataFlowDocs() {
         "  -> FormData is converted to JSON in renderForm()",
         "  -> POST /api/meals or PUT /api/meals/:id",
         "  -> validateMeal() applies required fields, enum checks, and week validation",
-        "  -> SQLite meals row is inserted or updated",
+        "  -> Supabase Postgres meals row is inserted or updated",
         "  -> API returns { meal }",
         "  -> Browser navigates to the meal detail route",
       ].join("\n"))}
@@ -1014,8 +1022,8 @@ function dataFlowDocs() {
         "  -> wireImageInput() identifies the active Meal, Ingredients, or Nutrition field",
         "  -> uploadFile() reads the image as a data URL",
         "  -> POST /api/uploads/image",
-        "  -> saveUploadedImage() writes a file into data/uploads/",
-        "  -> API returns /uploads/<filename>",
+        "  -> saveUploadedImage() uploads the file into Supabase Storage",
+        "  -> API returns a Supabase Storage URL",
         "  -> The matching URL input and preview are updated",
       ].join("\n"))}
     </section>
@@ -1089,13 +1097,17 @@ function dependenciesDocs() {
     <h2>External Dependencies</h2>
     <p>The MVP intentionally has a very small dependency surface. There are no third-party services, hosted databases, auth providers, or package dependencies declared in <code>package.json</code>.</p>
     ${docsTable(["Dependency", "Used by", "Why it exists", "If removed"], [
-      ["Node.js", "<code>server.js</code>", "Runs the local HTTP server and built-in modules.", "The app cannot serve pages, APIs, uploads, or SQLite data."],
-      ["<code>node:sqlite</code>", "Backend storage and export script", "Provides local SQLite persistence and read-only migration exports without an external database service.", "Meal and order data cannot be saved persistently or exported from SQLite."],
-      ["SQLite file", "<code>data/meals.sqlite</code>", "Stores meals and order history on this PC.", "Existing saved meals and orders are unavailable unless restored."],
+      ["Node.js", "<code>server.js</code>", "Runs the HTTP server and built-in modules.", "The app cannot serve pages or APIs."],
+      ["Supabase Postgres", "<code>server.js</code>", "Stores meal and order data for local and Vercel runtime.", "Meal and order data cannot be loaded or saved."],
+      ["Supabase Storage", "<code>server.js</code>", "Stores meal, ingredients, and nutrition images.", "Image uploads fail and saved image URLs cannot be generated."],
+      ["<code>node:sqlite</code>", "<code>scripts/export-sqlite-backup.js</code>", "Provides read-only export of old local SQLite data.", "Old SQLite data cannot be exported by the backup script."],
+      ["SQLite file", "<code>data/meals.sqlite</code>", "Legacy migration source only.", "Existing old local data cannot be exported unless already migrated."],
       ["Browser Fetch API", "<code>api()</code> helper", "Calls local REST endpoints from the frontend.", "The UI cannot load or save app data."],
       ["Browser FileReader API", "<code>uploadFile()</code>", "Converts selected, dropped, and pasted images into uploadable data URLs.", "Image paste/file upload previews stop working."],
       ["Browser FormData API", "<code>renderForm()</code> and <code>renderOrders()</code>", "Collects form inputs for meal and order saves.", "Forms require manual field collection."],
-      ["Local filesystem", "<code>data/uploads/</code>", "Persists meal, ingredients, and nutrition screenshots.", "Saved image references break or only work in memory."],
+      ["Local filesystem", "<code>public/</code> static files and legacy export files", "Serves frontend assets and keeps old export sources available.", "The app shell or legacy export path is unavailable."],
+      ["Supabase/Postgres", "<code>server.js</code> and <code>supabase/migrations/</code>", "Vercel-compatible runtime target for meal and order data.", "Meal and order APIs cannot read or write deployed data."],
+      ["Supabase Storage", "<code>meal-images</code> bucket", "Vercel-compatible runtime target for meal, ingredients, and nutrition images.", "Uploaded images cannot be saved or displayed through Storage URLs."],
     ])}
     <section class="docs-section">
       <h2>Package Scripts</h2>

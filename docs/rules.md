@@ -21,9 +21,10 @@ Keep entries concise. One line per decision when possible.
 
 ## Architecture
 
-- The app is a local Node server with static frontend files in `public/`, SQLite data in `data/meals.sqlite`, and uploads in `data/uploads/`.
+- The app is a Node server with static frontend files in `public/`, Supabase Postgres data storage, and Supabase Storage uploads.
 - In-app documentation is served as real routable pages under `/docs` and `/docs/*`, with server fallback to `public/index.html` for non-API app routes.
 - Supabase migration preparation uses `scripts/export-sqlite-backup.js` to create read-only JSON/upload snapshots under `backup/exports/`.
+- Supabase/Postgres migration SQL lives in `supabase/migrations/`; runtime data access in `server.js` uses Supabase REST and Storage APIs, not `node:sqlite`.
 
 ## Naming Conventions
 
@@ -40,7 +41,10 @@ Keep entries concise. One line per decision when possible.
 - Assistant responses must begin with `Checking knowledge base...` before any other text.
 - Documentation Center content should reflect the current local MVP scope and be updated when routes, APIs, schema, dependencies, or major components change.
 - Backup/export must preserve existing meal and meal order IDs and must not alter `data/meals.sqlite` or `data/uploads/`.
+- Supabase schema must preserve existing UUID IDs, meal/order relationships, timestamp fields, and current enum-style validation values.
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be exposed in browser JavaScript.
 
 ## Integrations
 
-- No third-party services are used for the MVP; data and documentation stay local to this PC.
+- Supabase is the Vercel-compatible database and storage target; keep database and Storage writes server-side.
+- Runtime environment variables are `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and optional `SUPABASE_STORAGE_BUCKET`.

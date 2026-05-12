@@ -1,58 +1,20 @@
 import { createServer } from "node:http";
-import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, existsSync, writeFileSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const dataDir = join(__dirname, "data");
-const uploadDir = join(dataDir, "uploads");
 const publicDir = join(__dirname, "public");
-const dbPath = join(dataDir, "meals.sqlite").replaceAll("\\", "/");
 const port = Number(process.env.PORT || 4173);
 
-mkdirSync(uploadDir, { recursive: true });
+loadLocalEnv();
 
-const db = new DatabaseSync(dbPath);
-db.exec(`
-  CREATE TABLE IF NOT EXISTS meals (
-    id TEXT PRIMARY KEY,
-    meal_name TEXT NOT NULL CHECK(length(meal_name) <= 200),
-    meal_type TEXT NOT NULL DEFAULT 'Dinner' CHECK(meal_type IN ('Dinner', 'Breakfast', 'Lunch')),
-    image_url TEXT,
-    ingredients_image_url TEXT,
-    nutrition_image_url TEXT,
-    description TEXT,
-    rating TEXT NOT NULL DEFAULT 'Not rated' CHECK(rating IN ('Favourite', 'Fine', 'Avoid', 'Not rated')),
-    notes TEXT,
-    last_ordered_date TEXT,
-    season TEXT CHECK(season IS NULL OR season IN ('Autumn', 'Winter', 'Spring', 'Summer')),
-    week_number INTEGER CHECK(week_number IS NULL OR week_number > 0),
-    day_available TEXT CHECK(day_available IS NULL OR day_available IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')),
-    status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Removed')),
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS meal_orders (
-    id TEXT PRIMARY KEY,
-    meal_id TEXT NOT NULL,
-    ordered_week_start_date TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(meal_id, ordered_week_start_date),
-    FOREIGN KEY(meal_id) REFERENCES meals(id) ON DELETE CASCADE
-  );
-`);
-
-const existingColumns = db.prepare("PRAGMA table_info(meals)").all().map((column) => column.name);
-if (!existingColumns.includes("ingredients_image_url")) {
-  db.exec("ALTER TABLE meals ADD COLUMN ingredients_image_url TEXT");
-}
-if (!existingColumns.includes("nutrition_image_url")) {
-  db.exec("ALTER TABLE meals ADD COLUMN nutrition_image_url TEXT");
-}
+const supabaseUrl = stripTrailingSlash(process.env.SUPABASE_URL || "");
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const supabaseKey = supabaseServiceRoleKey || supabaseAnonKey;
+const storageBucket = process.env.SUPABASE_STORAGE_BUCKET || "meal-images";
 
 const enums = {
   meal_type: ["Dinner", "Breakfast", "Lunch"],
@@ -62,43 +24,33 @@ const enums = {
   status: ["Active", "Removed"],
 };
 
-const seedMeals = [
-  ["Beef Lasagne", "Dinner", "Favourite", "Really filling, order again", "2026-04-20", null, null, null, "Active"],
-  ["Chicken Curry", "Dinner", "Avoid", "Did not like the sauce", "2026-04-22", null, null, null, "Active"],
-  ["Apple Cinnamon Porridge", "Breakfast", "Fine", "Okay, not exciting", "2026-04-23", "Autumn", 4, "Monday", "Active"],
-  ["Chicken Salad Wrap", "Lunch", "Favourite", "Good lunch option", "2026-04-24", "Autumn", 4, "Tuesday", "Active"],
-];
-
-if (db.prepare("SELECT COUNT(*) AS count FROM meals").get().count === 0) {
-  const insert = db.prepare(`
-    INSERT INTO meals (
-      id, meal_name, meal_type, rating, notes, last_ordered_date, season, week_number, day_available, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  for (const meal of seedMeals) insert.run(randomUUID(), ...meal);
+function loadLocalEnv() {
+  for (const file of [".env.local", ".env"]) {
+    const path = join(__dirname, file);
+    if (!existsSync(path)) continue;
+    for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
+      const [key, ...rest] = trimmed.split("=");
+      if (process.env[key]) continue;
+      process.env[key] = rest.join("=").replace(/^['"]|['"]$/g, "");
+    }
+  }
 }
 
-const mealSelect = `
-  SELECT
-    m.id,
-    m.meal_name,
-    m.meal_type,
-    m.image_url,
-    m.ingredients_image_url,
-    m.nutrition_image_url,
-    m.description,
-    m.rating,
-    m.notes,
-    COALESCE((SELECT MAX(o.ordered_week_start_date) FROM meal_orders o WHERE o.meal_id = m.id), m.last_ordered_date) AS last_ordered_date,
-    m.season,
-    m.week_number,
-    m.day_available,
-    m.status,
-    m.created_at,
-    m.updated_at,
-    (SELECT COUNT(*) FROM meal_orders o WHERE o.meal_id = m.id) AS order_count
-  FROM meals m
-`;
+function stripTrailingSlash(value) {
+  return value.replace(/\/+$/, "");
+}
+
+function requireSupabaseConfig() {
+  if (!supabaseUrl) throw new Error("SUPABASE_URL is not configured.");
+  if (!supabaseAnonKey) throw new Error("SUPABASE_ANON_KEY is not configured.");
+  if (!supabaseKey) throw new Error("Supabase API key is not configured.");
+}
+
+function cleanOptional(value) {
+  return value === "" || value === undefined ? null : value;
+}
 
 function toIsoDate(date) {
   const year = date.getFullYear();
@@ -121,64 +73,6 @@ function getThursdayWeekStart(value) {
   const daysSinceThursday = (day + 3) % 7;
   date.setDate(date.getDate() - daysSinceThursday);
   return toIsoDate(date);
-}
-
-function addDays(value, days) {
-  const date = parseLocalDate(value);
-  date.setDate(date.getDate() + days);
-  return toIsoDate(date);
-}
-
-db.prepare("SELECT id, ordered_week_start_date FROM meal_orders")
-  .all()
-  .forEach((order) => {
-    const date = parseLocalDate(order.ordered_week_start_date);
-    if (date.getDay() === 3) {
-      db.prepare("UPDATE meal_orders SET ordered_week_start_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-        .run(addDays(order.ordered_week_start_date, 1), order.id);
-    }
-  });
-
-db.prepare("SELECT id, last_ordered_date FROM meals WHERE last_ordered_date IS NOT NULL AND last_ordered_date != ''")
-  .all()
-  .forEach((meal) => {
-    const existingOrders = db.prepare("SELECT COUNT(*) AS count FROM meal_orders WHERE meal_id = ?").get(meal.id).count;
-    if (existingOrders > 0) return;
-    db.prepare(`
-      INSERT OR IGNORE INTO meal_orders (id, meal_id, ordered_week_start_date)
-      VALUES (?, ?, ?)
-    `).run(randomUUID(), meal.id, getThursdayWeekStart(meal.last_ordered_date));
-  });
-
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += chunk;
-      if (body.length > 12_000_000) {
-        reject(new Error("Request body is too large."));
-        req.destroy();
-      }
-    });
-    req.on("end", () => resolve(body ? JSON.parse(body) : {}));
-    req.on("error", reject);
-  });
-}
-
-function sendJson(res, status, payload) {
-  res.writeHead(status, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store",
-  });
-  res.end(JSON.stringify(payload));
-}
-
-function sendError(res, status, message) {
-  sendJson(res, status, { error: message });
-}
-
-function cleanOptional(value) {
-  return value === "" || value === undefined ? null : value;
 }
 
 function validateMeal(payload, partial = false) {
@@ -215,213 +109,348 @@ function validateMeal(payload, partial = false) {
   return meal;
 }
 
-function getMeals(url) {
-  const params = url.searchParams;
-  const where = [];
-  const values = [];
-  const status = params.get("status") || "Active";
-
-  if (status !== "All") {
-    where.push("status = ?");
-    values.push(status);
-  }
-  if (params.get("rating") && params.get("rating") !== "All") {
-    where.push("rating = ?");
-    values.push(params.get("rating"));
-  }
-  if (params.get("meal_type") && params.get("meal_type") !== "All") {
-    where.push("meal_type = ?");
-    values.push(params.get("meal_type"));
-  }
-  if (params.get("season") && params.get("season") !== "All") {
-    where.push("season = ?");
-    values.push(params.get("season"));
-  }
-  if (params.get("week_number")) {
-    where.push("week_number = ?");
-    values.push(Number(params.get("week_number")));
-  }
-  if (params.get("weekly") === "true") {
-    where.push("meal_type IN ('Breakfast', 'Lunch')");
-  }
-  if (params.get("search")) {
-    where.push("meal_name LIKE ?");
-    values.push(`%${params.get("search")}%`);
-  }
-
-  const sortMap = {
-    meal_name: "CASE rating WHEN 'Avoid' THEN 1 ELSE 0 END ASC, meal_name COLLATE NOCASE ASC",
-    last_ordered_date: "last_ordered_date IS NULL ASC, last_ordered_date DESC",
-    order_count: "order_count DESC, meal_name COLLATE NOCASE ASC",
-    rating: "CASE rating WHEN 'Avoid' THEN 1 ELSE 0 END ASC, meal_name COLLATE NOCASE ASC",
-  };
-  const orderBy = sortMap[params.get("sort")] || sortMap.meal_name;
-  const sql = `${mealSelect} ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY ${orderBy}`;
-  return db.prepare(sql).all(...values);
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 12_000_000) {
+        reject(new Error("Request body is too large."));
+        req.destroy();
+      }
+    });
+    req.on("end", () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch {
+        reject(new Error("Request body must be valid JSON."));
+      }
+    });
+    req.on("error", reject);
+  });
 }
 
-function getMeal(id) {
-  const meal = db.prepare(`${mealSelect} WHERE m.id = ?`).get(id);
-  if (!meal) return null;
-  meal.order_history = db.prepare(`
-    SELECT id, ordered_week_start_date, created_at
-    FROM meal_orders
-    WHERE meal_id = ?
-    ORDER BY ordered_week_start_date DESC
-  `).all(id);
+function sendJson(res, status, payload) {
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
+  res.end(JSON.stringify(payload));
+}
+
+function sendError(res, status, message) {
+  sendJson(res, status, { error: message });
+}
+
+function supabaseHeaders(extra = {}) {
+  requireSupabaseConfig();
+  return {
+    apikey: supabaseAnonKey,
+    Authorization: `Bearer ${supabaseKey}`,
+    ...extra,
+  };
+}
+
+async function supabaseRest(path, { method = "GET", query = {}, body, headers = {}, prefer } = {}) {
+  requireSupabaseConfig();
+  const url = new URL(`${supabaseUrl}/rest/v1/${path}`);
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null) url.searchParams.set(key, value);
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers: supabaseHeaders({
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(prefer ? { Prefer: prefer } : {}),
+      ...headers,
+    }),
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    const message = data?.message || data?.hint || data?.details || `Supabase request failed (${response.status}).`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.code = data?.code;
+    throw error;
+  }
+  return data;
+}
+
+function storagePublicUrl(objectPath) {
+  const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
+  return `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(storageBucket)}/${encodedPath}`;
+}
+
+function legacyUploadUrlToStorageUrl(value) {
+  if (!value || !value.startsWith("/uploads/")) return value;
+  return storagePublicUrl(`legacy/${value.split("/").pop()}`);
+}
+
+function resolveMealImageUrls(meal) {
+  if (!meal) return meal;
+  return {
+    ...meal,
+    image_url: legacyUploadUrlToStorageUrl(meal.image_url),
+    ingredients_image_url: legacyUploadUrlToStorageUrl(meal.ingredients_image_url),
+    nutrition_image_url: legacyUploadUrlToStorageUrl(meal.nutrition_image_url),
+  };
+}
+
+function sortMeals(meals, sort = "meal_name") {
+  const byName = (a, b) => a.meal_name.localeCompare(b.meal_name, undefined, { sensitivity: "base" });
+  const avoidLast = (a, b) => (a.rating === "Avoid" ? 1 : 0) - (b.rating === "Avoid" ? 1 : 0);
+
+  return [...meals].sort((a, b) => {
+    if (sort === "last_ordered_date") {
+      if (!a.last_ordered_date && b.last_ordered_date) return 1;
+      if (a.last_ordered_date && !b.last_ordered_date) return -1;
+      if (a.last_ordered_date !== b.last_ordered_date) return String(b.last_ordered_date || "").localeCompare(String(a.last_ordered_date || ""));
+      return byName(a, b);
+    }
+    if (sort === "order_count") {
+      const countDiff = Number(b.order_count || 0) - Number(a.order_count || 0);
+      return countDiff || byName(a, b);
+    }
+    return avoidLast(a, b) || byName(a, b);
+  });
+}
+
+async function getMeals(url) {
+  const params = url.searchParams;
+  const query = { select: "*" };
+  const status = params.get("status") || "Active";
+
+  if (status !== "All") query.status = `eq.${status}`;
+  if (params.get("rating") && params.get("rating") !== "All") query.rating = `eq.${params.get("rating")}`;
+  if (params.get("meal_type") && params.get("meal_type") !== "All") query.meal_type = `eq.${params.get("meal_type")}`;
+  if (params.get("season") && params.get("season") !== "All") query.season = `eq.${params.get("season")}`;
+  if (params.get("week_number")) query.week_number = `eq.${Number(params.get("week_number"))}`;
+  if (params.get("weekly") === "true") query.meal_type = "in.(Breakfast,Lunch)";
+  if (params.get("search")) query.meal_name = `ilike.*${params.get("search")}*`;
+
+  const meals = await supabaseRest("meal_with_stats", { query });
+  return sortMeals(meals.map(resolveMealImageUrls), params.get("sort") || "meal_name");
+}
+
+async function getMeal(id) {
+  const meals = await supabaseRest("meal_with_stats", {
+    query: { select: "*", id: `eq.${id}`, limit: "1" },
+  });
+  if (!meals.length) return null;
+  const orderHistory = await supabaseRest("meal_orders", {
+    query: {
+      select: "id,ordered_week_start_date,created_at",
+      meal_id: `eq.${id}`,
+      order: "ordered_week_start_date.desc",
+    },
+  });
+  const meal = resolveMealImageUrls(meals[0]);
+  meal.order_history = orderHistory;
   return meal;
 }
 
-function getOrders() {
-  const meals = db.prepare(`
-    ${mealSelect}
-    WHERE m.meal_type = 'Dinner' AND m.status = 'Active'
-    ORDER BY CASE m.rating WHEN 'Avoid' THEN 1 ELSE 0 END ASC, m.meal_name COLLATE NOCASE ASC
-  `).all();
-  const orders = db.prepare(`
-    SELECT o.id, o.meal_id, o.ordered_week_start_date, m.meal_name, m.rating
-    FROM meal_orders o
-    JOIN meals m ON m.id = o.meal_id
-    WHERE m.meal_type = 'Dinner'
-    ORDER BY o.ordered_week_start_date DESC, m.meal_name COLLATE NOCASE ASC
-  `).all();
+async function getOrders() {
+  const meals = sortMeals(await supabaseRest("meal_with_stats", {
+    query: { select: "*", meal_type: "eq.Dinner", status: "eq.Active" },
+  }), "meal_name").map(resolveMealImageUrls);
+
+  const dinnerMeals = await supabaseRest("meals", {
+    query: { select: "id,meal_name,rating,meal_type", meal_type: "eq.Dinner" },
+  });
+  const dinnerMealMap = new Map(dinnerMeals.map((meal) => [meal.id, meal]));
+  const rawOrders = await supabaseRest("meal_orders", {
+    query: { select: "id,meal_id,ordered_week_start_date", order: "ordered_week_start_date.desc" },
+  });
+
+  const orders = rawOrders
+    .map((order) => ({ ...order, meal: dinnerMealMap.get(order.meal_id) }))
+    .filter((order) => order.meal)
+    .map((order) => ({
+      id: order.id,
+      meal_id: order.meal_id,
+      ordered_week_start_date: order.ordered_week_start_date,
+      meal_name: order.meal.meal_name,
+      rating: order.meal.rating,
+    }))
+    .sort((a, b) => b.ordered_week_start_date.localeCompare(a.ordered_week_start_date) || a.meal_name.localeCompare(b.meal_name, undefined, { sensitivity: "base" }));
+
   const weeks = [...new Set(orders.map((order) => order.ordered_week_start_date))].sort().reverse();
   return { meals, orders, weeks };
 }
 
-function createOrder(payload) {
+async function touchMeal(id) {
+  await supabaseRest("meals", {
+    method: "PATCH",
+    query: { id: `eq.${id}` },
+    body: { updated_at: new Date().toISOString() },
+  });
+}
+
+async function createOrder(payload) {
   const mealId = cleanOptional(payload.meal_id);
   if (!mealId) throw new Error("Meal is required.");
-  const meal = db.prepare("SELECT id, meal_type FROM meals WHERE id = ? AND status = 'Active'").get(mealId);
+  const meals = await supabaseRest("meals", {
+    query: { select: "id,meal_type", id: `eq.${mealId}`, status: "eq.Active", limit: "1" },
+  });
+  const meal = meals[0];
   if (!meal) throw new Error("Meal not found.");
   if (meal.meal_type !== "Dinner") throw new Error("Only dinner meals can be added to Orders.");
+
   const orderedWeekStartDate = getThursdayWeekStart(cleanOptional(payload.ordered_week_start_date));
-  const id = randomUUID();
-  db.prepare(`
-    INSERT OR IGNORE INTO meal_orders (id, meal_id, ordered_week_start_date)
-    VALUES (?, ?, ?)
-  `).run(id, mealId, orderedWeekStartDate);
-  db.prepare("UPDATE meals SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(mealId);
+  const existing = await supabaseRest("meal_orders", {
+    query: { select: "id", meal_id: `eq.${mealId}`, ordered_week_start_date: `eq.${orderedWeekStartDate}`, limit: "1" },
+  });
+  if (!existing.length) {
+    await supabaseRest("meal_orders", {
+      method: "POST",
+      body: { id: randomUUID(), meal_id: mealId, ordered_week_start_date: orderedWeekStartDate },
+      prefer: "return=minimal",
+    });
+  }
+  await touchMeal(mealId);
   return getOrders();
 }
 
-function updateOrder(id, payload) {
-  const existing = db.prepare(`
-    SELECT o.id, o.meal_id
-    FROM meal_orders o
-    JOIN meals m ON m.id = o.meal_id
-    WHERE o.id = ? AND m.meal_type = 'Dinner'
-  `).get(id);
+async function updateOrder(id, payload) {
+  const existingRows = await supabaseRest("meal_orders", {
+    query: { select: "id,meal_id", id: `eq.${id}`, limit: "1" },
+  });
+  const existing = existingRows[0];
   if (!existing) return null;
+
   const orderedWeekStartDate = getThursdayWeekStart(cleanOptional(payload.ordered_week_start_date));
   try {
-    db.prepare(`
-      UPDATE meal_orders
-      SET ordered_week_start_date = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(orderedWeekStartDate, id);
+    const updated = await supabaseRest("meal_orders", {
+      method: "PATCH",
+      query: { id: `eq.${id}` },
+      body: { ordered_week_start_date: orderedWeekStartDate },
+      prefer: "return=representation",
+    });
+    await touchMeal(existing.meal_id);
+    const meal = (await supabaseRest("meals", {
+      query: { select: "meal_name,rating", id: `eq.${existing.meal_id}`, limit: "1" },
+    }))[0];
+    return { ...updated[0], meal_name: meal?.meal_name, rating: meal?.rating };
   } catch (error) {
-    if (String(error.message).includes("UNIQUE")) {
+    if (error.code === "23505" || error.status === 409) {
       throw new Error("That meal is already recorded for that Thursday week.");
     }
     throw error;
   }
-  db.prepare("UPDATE meals SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(existing.meal_id);
-  return db.prepare(`
-    SELECT o.id, o.meal_id, o.ordered_week_start_date, m.meal_name, m.rating
-    FROM meal_orders o
-    JOIN meals m ON m.id = o.meal_id
-    WHERE o.id = ?
-  `).get(id);
 }
 
-function deleteOrder(id) {
-  const existing = db.prepare("SELECT id, meal_id FROM meal_orders WHERE id = ?").get(id);
+async function deleteOrder(id) {
+  const existingRows = await supabaseRest("meal_orders", {
+    query: { select: "id,meal_id", id: `eq.${id}`, limit: "1" },
+  });
+  const existing = existingRows[0];
   if (!existing) return null;
-  db.prepare("DELETE FROM meal_orders WHERE id = ?").run(id);
-  db.prepare("UPDATE meals SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(existing.meal_id);
+  await supabaseRest("meal_orders", {
+    method: "DELETE",
+    query: { id: `eq.${id}` },
+    prefer: "return=minimal",
+  });
+  await touchMeal(existing.meal_id);
   return existing;
 }
 
-function createMeal(payload) {
+async function createMeal(payload) {
   const meal = validateMeal(payload);
   const id = randomUUID();
-  db.prepare(`
-    INSERT INTO meals (
-      id, meal_name, meal_type, image_url, ingredients_image_url, nutrition_image_url, description, rating, notes, last_ordered_date,
-      season, week_number, day_available, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    meal.meal_name,
-    meal.meal_type,
-    meal.image_url,
-    meal.ingredients_image_url,
-    meal.nutrition_image_url,
-    meal.description,
-    meal.rating,
-    meal.notes,
-    meal.last_ordered_date,
-    meal.season,
-    meal.week_number,
-    meal.day_available,
-    meal.status,
-  );
+  await supabaseRest("meals", {
+    method: "POST",
+    body: { id, ...meal },
+    prefer: "return=minimal",
+  });
   return getMeal(id);
 }
 
-function updateMeal(id, payload) {
-  if (!getMeal(id)) return null;
+async function updateMeal(id, payload) {
+  if (!(await getMeal(id))) return null;
   const meal = validateMeal(payload);
-  db.prepare(`
-    UPDATE meals SET
-      meal_name = ?, meal_type = ?, image_url = ?, ingredients_image_url = ?, nutrition_image_url = ?,
-      description = ?, rating = ?, notes = ?,
-      last_ordered_date = ?, season = ?, week_number = ?, day_available = ?, status = ?,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(
-    meal.meal_name,
-    meal.meal_type,
-    meal.image_url,
-    meal.ingredients_image_url,
-    meal.nutrition_image_url,
-    meal.description,
-    meal.rating,
-    meal.notes,
-    meal.last_ordered_date,
-    meal.season,
-    meal.week_number,
-    meal.day_available,
-    meal.status,
-    id,
-  );
+  await supabaseRest("meals", {
+    method: "PATCH",
+    query: { id: `eq.${id}` },
+    body: meal,
+    prefer: "return=minimal",
+  });
   return getMeal(id);
 }
 
-function updateMealRating(id, payload) {
+async function updateMealRating(id, payload) {
   const rating = cleanOptional(payload.rating);
   if (!enums.rating.includes(rating)) throw new Error("Rating is invalid.");
-  const result = db.prepare("UPDATE meals SET rating = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(rating, id);
-  return result.changes ? getMeal(id) : null;
+  const updated = await supabaseRest("meals", {
+    method: "PATCH",
+    query: { id: `eq.${id}` },
+    body: { rating },
+    prefer: "return=representation",
+  });
+  return updated.length ? getMeal(id) : null;
 }
 
-function saveUploadedImage({ dataUrl, filename = "meal-image" }) {
+async function removeMeal(id) {
+  const updated = await supabaseRest("meals", {
+    method: "PATCH",
+    query: { id: `eq.${id}` },
+    body: { status: "Removed" },
+    prefer: "return=representation",
+  });
+  return updated.length ? getMeal(id) : null;
+}
+
+async function saveUploadedImage({ dataUrl, filename = "meal-image" }) {
   const match = /^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,(.+)$/i.exec(dataUrl || "");
   if (!match) throw new Error("Upload must be a pasted or selected image.");
+  requireSupabaseConfig();
+  if (!supabaseServiceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for server-side Storage uploads.");
+  }
+
   const mime = match[1].toLowerCase();
   const ext = mime.includes("png") ? ".png" : mime.includes("webp") ? ".webp" : mime.includes("gif") ? ".gif" : ".jpg";
   const safeName = filename.replace(/[^a-z0-9_-]/gi, "-").slice(0, 50) || "meal-image";
-  const storedName = `${Date.now()}-${randomUUID()}-${safeName}${ext}`;
-  writeFileSync(join(uploadDir, storedName), Buffer.from(match[2], "base64"));
-  return `/uploads/${storedName}`;
+  const objectPath = `meals/unassigned/${Date.now()}-${randomUUID()}-${safeName}${ext}`;
+  const uploadUrl = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(storageBucket)}/${objectPath.split("/").map(encodeURIComponent).join("/")}`;
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: supabaseHeaders({
+      "Content-Type": mime,
+      "x-upsert": "false",
+    }),
+    body: Buffer.from(match[2], "base64"),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Supabase Storage upload failed (${response.status}).`;
+    try {
+      const data = JSON.parse(text);
+      message = data.message || data.error || message;
+    } catch {
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
+
+  return storagePublicUrl(objectPath);
 }
 
 function serveStatic(req, res, pathname) {
+  if (pathname.startsWith("/uploads/")) {
+    res.writeHead(302, { Location: legacyUploadUrlToStorageUrl(pathname) });
+    res.end();
+    return true;
+  }
+
   const routePath = pathname === "/" ? "/index.html" : pathname;
-  const base = routePath.startsWith("/uploads/") ? dataDir : publicDir;
-  const filePath = normalize(join(base, decodeURIComponent(routePath)));
-  if (!filePath.startsWith(base) || !existsSync(filePath) || statSync(filePath).isDirectory()) {
+  const filePath = normalize(join(publicDir, decodeURIComponent(routePath)));
+  if (!filePath.startsWith(publicDir) || !existsSync(filePath) || statSync(filePath).isDirectory()) {
     return false;
   }
   const types = {
@@ -441,52 +470,58 @@ function serveStatic(req, res, pathname) {
   return true;
 }
 
+function errorStatus(error) {
+  if (error.status === 404) return 404;
+  if (error.status === 401 || error.status === 403) return error.status;
+  if (String(error.message || "").includes("not configured")) return 500;
+  return 400;
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
     if (url.pathname === "/api/meals" && req.method === "GET") {
-      return sendJson(res, 200, { meals: getMeals(url) });
+      return sendJson(res, 200, { meals: await getMeals(url) });
     }
     if (url.pathname === "/api/meals" && req.method === "POST") {
-      return sendJson(res, 201, { meal: createMeal(await readBody(req)) });
+      return sendJson(res, 201, { meal: await createMeal(await readBody(req)) });
     }
     if (url.pathname === "/api/orders" && req.method === "GET") {
-      return sendJson(res, 200, getOrders());
+      return sendJson(res, 200, await getOrders());
     }
     if (url.pathname === "/api/orders" && req.method === "POST") {
-      return sendJson(res, 201, createOrder(await readBody(req)));
+      return sendJson(res, 201, await createOrder(await readBody(req)));
     }
     const orderMatch = /^\/api\/orders\/([^/]+)$/.exec(url.pathname);
     if (orderMatch && (req.method === "PUT" || req.method === "PATCH")) {
-      const order = updateOrder(orderMatch[1], await readBody(req));
+      const order = await updateOrder(orderMatch[1], await readBody(req));
       return order ? sendJson(res, 200, { order }) : sendError(res, 404, "Order not found.");
     }
     if (orderMatch && req.method === "DELETE") {
-      const order = deleteOrder(orderMatch[1]);
+      const order = await deleteOrder(orderMatch[1]);
       return order ? sendJson(res, 200, { order }) : sendError(res, 404, "Order not found.");
     }
     const mealMatch = /^\/api\/meals\/([^/]+)$/.exec(url.pathname);
     if (mealMatch && req.method === "GET") {
-      const meal = getMeal(mealMatch[1]);
+      const meal = await getMeal(mealMatch[1]);
       return meal ? sendJson(res, 200, { meal }) : sendError(res, 404, "Meal not found.");
     }
     if (mealMatch && req.method === "PUT") {
-      const meal = updateMeal(mealMatch[1], await readBody(req));
+      const meal = await updateMeal(mealMatch[1], await readBody(req));
       return meal ? sendJson(res, 200, { meal }) : sendError(res, 404, "Meal not found.");
     }
     const ratingMatch = /^\/api\/meals\/([^/]+)\/rating$/.exec(url.pathname);
     if (ratingMatch && req.method === "PATCH") {
-      const meal = updateMealRating(ratingMatch[1], await readBody(req));
+      const meal = await updateMealRating(ratingMatch[1], await readBody(req));
       return meal ? sendJson(res, 200, { meal }) : sendError(res, 404, "Meal not found.");
     }
     const removeMatch = /^\/api\/meals\/([^/]+)\/remove$/.exec(url.pathname);
     if (removeMatch && req.method === "PATCH") {
-      db.prepare("UPDATE meals SET status = 'Removed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(removeMatch[1]);
-      const meal = getMeal(removeMatch[1]);
+      const meal = await removeMeal(removeMatch[1]);
       return meal ? sendJson(res, 200, { meal }) : sendError(res, 404, "Meal not found.");
     }
     if (url.pathname === "/api/uploads/image" && req.method === "POST") {
-      return sendJson(res, 201, { image_url: saveUploadedImage(await readBody(req)) });
+      return sendJson(res, 201, { image_url: await saveUploadedImage(await readBody(req)) });
     }
     if (serveStatic(req, res, url.pathname)) return;
     if (req.method === "GET" && !url.pathname.startsWith("/api/")) {
@@ -495,11 +530,12 @@ const server = createServer(async (req, res) => {
     }
     return sendError(res, 404, "Not found.");
   } catch (error) {
-    return sendError(res, 400, error.message || "Request failed.");
+    console.error(error);
+    return sendError(res, errorStatus(error), error.message || "Request failed.");
   }
 });
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`Meal Tracker is running at http://localhost:${port}`);
-  console.log(`On your Wi-Fi, try http://<this-computer-ip>:${port}`);
+  console.log(`Using Supabase project: ${supabaseUrl || "not configured"}`);
 });

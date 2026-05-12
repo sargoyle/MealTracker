@@ -1,6 +1,31 @@
 # Meal Tracker
 
-A local personal meal rating tracker with dark-mode UI, SQLite persistence, and pasted/uploaded meal images.
+A personal meal rating tracker with dark-mode UI, Supabase/Postgres persistence, and Supabase Storage image uploads.
+
+## Supabase setup
+
+The runtime API now uses Supabase instead of local SQLite. Create a local `.env.local` file from `.env.example`:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Fill in:
+
+```text
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-server-only
+SUPABASE_STORAGE_BUCKET=meal-images
+```
+
+Important:
+
+- `SUPABASE_ANON_KEY` is client-safe, but this app still keeps Supabase calls server-side.
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be exposed in browser code.
+- The service role key is required for server-side Storage uploads.
+- In Vercel, add these values as Environment Variables.
+- Run the SQL in `supabase/migrations/202605120001_create_meal_tracker_schema.sql` before starting the app against Supabase.
 
 ## Run
 
@@ -16,11 +41,11 @@ Then open:
 http://localhost:4173
 ```
 
-The app stores meal data in `data/meals.sqlite` and uploaded/pasted images in `data/uploads/`.
+The app stores meal data in Supabase Postgres and uploaded/pasted images in the Supabase Storage bucket named by `SUPABASE_STORAGE_BUCKET`.
 
 ## Backup/export for Supabase migration
 
-Before changing the app runtime or moving data to Supabase, create a local export snapshot:
+To preserve old local SQLite data before importing it to Supabase, create a local export snapshot:
 
 ```powershell
 & 'C:\Users\61402\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' scripts/export-sqlite-backup.js
@@ -40,13 +65,29 @@ This creates a timestamped folder under `backup/exports/` containing:
 - `uploads-manifest.json` mapping copied upload files back to their source paths.
 - `manifest.json` with counts and export metadata.
 
-The export script opens `data/meals.sqlite` read-only and does not delete or alter the SQLite database or upload folder.
+The export script opens `data/meals.sqlite` read-only and does not delete or alter the old SQLite database or upload folder.
 
 To write an export to a specific folder, pass a path:
 
 ```powershell
 & 'C:\Users\61402\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' scripts/export-sqlite-backup.js backup/exports/my-export-name
 ```
+
+## Supabase schema preparation
+
+The first Supabase/Postgres migration is in:
+
+```text
+supabase/migrations/202605120001_create_meal_tracker_schema.sql
+```
+
+Migration notes, Storage bucket planning, RLS recommendations, and dashboard apply instructions are in:
+
+```text
+docs/supabase-migration.md
+```
+
+The current app runtime expects this schema in Supabase.
 
 ## Features
 
