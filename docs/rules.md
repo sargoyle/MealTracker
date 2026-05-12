@@ -47,4 +47,4 @@ Keep entries concise. One line per decision when possible.
 ## Integrations
 
 - Supabase is the Vercel-compatible database and storage target; keep database and Storage writes server-side.
-- Runtime environment variables are `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and optional `SUPABASE_STORAGE_BUCKET`.
+- Runtime environment variables are `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and optional `SUPABASE_STORAGE_BUCKET`.

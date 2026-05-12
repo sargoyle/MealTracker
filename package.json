@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "export:backup": "node scripts/export-sqlite-backup.js"
+    "export:backup": "node scripts/export-sqlite-backup.js",
+    "import:supabase": "node scripts/import-supabase-data.js"
   }
 }

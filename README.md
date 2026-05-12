@@ -13,15 +13,15 @@ Copy-Item .env.example .env.local
 Fill in:
 
 ```text
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-server-only
 SUPABASE_STORAGE_BUCKET=meal-images
 ```
 
 Important:
 
-- `SUPABASE_ANON_KEY` is client-safe, but this app still keeps Supabase calls server-side.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` is client-safe, but this app still keeps Supabase calls server-side.
 - `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be exposed in browser code.
 - The service role key is required for server-side Storage uploads.
 - In Vercel, add these values as Environment Variables.
@@ -88,6 +88,28 @@ docs/supabase-migration.md
 ```
 
 The current app runtime expects this schema in Supabase.
+
+## Import existing local data into Supabase
+
+After creating the Supabase schema and bucket, import the latest local export:
+
+```powershell
+npm run import:supabase
+```
+
+Or import a specific export folder:
+
+```powershell
+npm run import:supabase -- backup/exports/2026-05-12T09-41-51Z
+```
+
+The import script:
+
+- Reads `meals.json`, `meal_orders.json`, and `uploads-manifest.json`.
+- Uploads exported files to Supabase Storage under `legacy/<filename>`.
+- Rewrites old `/uploads/<filename>` image references to Supabase Storage public URLs.
+- Upserts meals and meal orders while preserving existing IDs.
+- Does not delete or alter `data/meals.sqlite` or `data/uploads/`.
 
 ## Features
 

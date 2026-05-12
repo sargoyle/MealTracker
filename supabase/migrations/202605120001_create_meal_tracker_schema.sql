@@ -103,6 +103,20 @@ comment on table public.meals is 'Meal Tracker meal library migrated from local 
 comment on table public.meal_orders is 'Dinner order history, one row per meal per Thursday week.';
 comment on view public.meal_with_stats is 'Compatibility view for list/detail pages that need derived last_ordered_date and order_count.';
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'meal-images',
+  'meal-images',
+  true,
+  12000000,
+  array['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 -- RLS recommendation:
 -- Do not enable row level security until the app has an agreed authentication model.
 -- For a server-only Vercel API using the Supabase service role key, RLS can remain disabled initially.

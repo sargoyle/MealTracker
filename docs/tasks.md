@@ -173,7 +173,8 @@ This file is the source of truth for implementation order. It follows the produc
 - [x] Add a safe local export script for SQLite meals, meal orders, and upload files.
 - [x] Create Supabase Postgres schema for meals and order history.
 - [x] Create Supabase Storage bucket plan for meal, ingredients, and nutrition images.
-- [ ] Import exported local data into Supabase without changing existing IDs.
+- [x] Add import process for exported local data into Supabase without changing existing IDs.
+- [ ] Run the Supabase import against the production project after environment variables are configured.
 - [x] Replace SQLite data access with Supabase/Postgres data access.
 - [x] Replace local upload storage with Supabase Storage.
 - [ ] Verify Vercel deployment with Supabase-backed data and uploads.

@@ -59,6 +59,7 @@ Create one Supabase Storage bucket:
 Recommended object paths:
 
 ```text
+meal-images/legacy/<filename>                       # imported historical uploads
 meal-images/meals/<meal-id>/meal/<filename>
 meal-images/meals/<meal-id>/ingredients/<filename>
 meal-images/meals/<meal-id>/nutrition/<filename>
@@ -94,13 +95,29 @@ If the browser later talks directly to Supabase:
 Set these locally in `.env.local` and in Vercel Environment Variables:
 
 ```text
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-server-only
 SUPABASE_STORAGE_BUCKET=meal-images
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` is required for server-side Storage uploads and must never be exposed in frontend code.
+
+## Import Existing Exported Data
+
+After the SQL migration has run, import the latest export:
+
+```powershell
+npm run import:supabase
+```
+
+Or import a specific export folder:
+
+```powershell
+npm run import:supabase -- backup/exports/2026-05-12T09-41-51Z
+```
+
+The script uploads exported files to `meal-images/legacy/<filename>`, rewrites old `/uploads/<filename>` fields to Supabase public URLs, and upserts `meals` before `meal_orders` so foreign keys are preserved.
 
 ## Assumptions
 

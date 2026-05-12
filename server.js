@@ -10,8 +10,8 @@ const port = Number(process.env.PORT || 4173);
 
 loadLocalEnv();
 
-const supabaseUrl = stripTrailingSlash(process.env.SUPABASE_URL || "");
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
+const supabaseUrl = stripTrailingSlash(process.env.NEXT_PUBLIC_SUPABASE_URL || "");
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const supabaseKey = supabaseServiceRoleKey || supabaseAnonKey;
 const storageBucket = process.env.SUPABASE_STORAGE_BUCKET || "meal-images";
@@ -43,8 +43,8 @@ function stripTrailingSlash(value) {
 }
 
 function requireSupabaseConfig() {
-  if (!supabaseUrl) throw new Error("SUPABASE_URL is not configured.");
-  if (!supabaseAnonKey) throw new Error("SUPABASE_ANON_KEY is not configured.");
+  if (!supabaseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL is not configured.");
+  if (!supabaseAnonKey) throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured.");
   if (!supabaseKey) throw new Error("Supabase API key is not configured.");
 }
 
