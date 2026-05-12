@@ -18,6 +18,30 @@ http://localhost:4173
 
 The app stores meal data in `data/meals.sqlite` and uploaded/pasted images in `data/uploads/`.
 
+## Backup/export for Supabase migration
+
+Before changing the app runtime or moving data to Supabase, create a local export snapshot:
+
+```powershell
+npm run export:backup
+```
+
+This creates a timestamped folder under `backup/exports/` containing:
+
+- `meals.json` with every meal row.
+- `meal_orders.json` with every order-history row.
+- `uploads/` with copies of files from `data/uploads/`.
+- `uploads-manifest.json` mapping copied upload files back to their source paths.
+- `manifest.json` with counts and export metadata.
+
+The export script opens `data/meals.sqlite` read-only and does not delete or alter the SQLite database or upload folder.
+
+To write an export to a specific folder, pass a path:
+
+```powershell
+npm run export:backup -- backup/exports/my-export-name
+```
+
 ## Features
 
 - Home summary cards for Favourite, Fine, Avoid, and Not rated meals.

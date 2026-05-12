@@ -23,6 +23,7 @@ Keep entries concise. One line per decision when possible.
 
 - The app is a local Node server with static frontend files in `public/`, SQLite data in `data/meals.sqlite`, and uploads in `data/uploads/`.
 - In-app documentation is served as real routable pages under `/docs` and `/docs/*`, with server fallback to `public/index.html` for non-API app routes.
+- Supabase migration preparation uses `scripts/export-sqlite-backup.js` to create read-only JSON/upload snapshots under `backup/exports/`.
 
 ## Naming Conventions
 
@@ -38,6 +39,7 @@ Keep entries concise. One line per decision when possible.
 - Documentation workflow requires reading and maintaining `docs/masterplan.md`, `docs/tasks.md`, `docs/rules.md`, `docs/changelog.md`, and the live `/docs` pages before and after implementation work.
 - Assistant responses must begin with `Checking knowledge base...` before any other text.
 - Documentation Center content should reflect the current local MVP scope and be updated when routes, APIs, schema, dependencies, or major components change.
+- Backup/export must preserve existing meal and meal order IDs and must not alter `data/meals.sqlite` or `data/uploads/`.
 
 ## Integrations
 

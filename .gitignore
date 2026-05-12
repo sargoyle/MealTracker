@@ -9,3 +9,5 @@ data/*.sqlite
 data/write-test.txt
 data/uploads/*
 !data/uploads/.gitkeep
+backup/exports/*
+!backup/exports/.gitkeep

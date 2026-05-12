@@ -5,6 +5,7 @@
   "description": "Local personal meal rating tracker with SQLite persistence.",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "export:backup": "node scripts/export-sqlite-backup.js"
   }
 }
