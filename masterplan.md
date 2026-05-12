@@ -24,6 +24,7 @@ Included:
 
 - Local personal app.
 - SQLite persistence.
+- Local JSON/upload export snapshots for safe Supabase migration preparation.
 - Image URL, paste, drag/drop, and file upload support.
 - Ingredients and nutritional information stored as pasted/uploaded reference images.
 - Home, Meals, Orders, Add/Edit, and Detail screens.
@@ -31,7 +32,6 @@ Included:
 
 Excluded:
 
-- Backup/export.
 - Website scraping or automated import.
 - AI parsing.
 - Nutrition analysis or automatic extraction from nutrition labels.

@@ -23,6 +23,12 @@ The app stores meal data in `data/meals.sqlite` and uploaded/pasted images in `d
 Before changing the app runtime or moving data to Supabase, create a local export snapshot:
 
 ```powershell
+& 'C:\Users\61402\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' scripts/export-sqlite-backup.js
+```
+
+If you have `npm` available on your PATH, this package script does the same thing:
+
+```powershell
 npm run export:backup
 ```
 
@@ -39,7 +45,7 @@ The export script opens `data/meals.sqlite` read-only and does not delete or alt
 To write an export to a specific folder, pass a path:
 
 ```powershell
-npm run export:backup -- backup/exports/my-export-name
+& 'C:\Users\61402\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' scripts/export-sqlite-backup.js backup/exports/my-export-name
 ```
 
 ## Features

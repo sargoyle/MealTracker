@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Initial project setup
-- 2026-05-12: Added read-only SQLite/export snapshot process for Supabase migration preparation. Files affected: `scripts/export-sqlite-backup.js`, `backup/exports/.gitkeep`, `.gitignore`, `package.json`, `README.md`, `docs/masterplan.md`, `docs/rules.md`, `docs/tasks.md`, `docs/changelog.md`, `public/app.js`.
+- 2026-05-12: Added read-only SQLite/export snapshot process for Supabase migration preparation. Files affected: `scripts/export-sqlite-backup.js`, `backup/exports/.gitkeep`, `.gitignore`, `package.json`, `README.md`, `masterplan.md`, `tasks.md`, `docs/masterplan.md`, `docs/rules.md`, `docs/tasks.md`, `docs/changelog.md`, `public/app.js`.
 - 2026-05-04: Added changelog documentation structure and rules. Files affected: `docs/changelog.md`, `tasks.md`.
 - 2026-05-04: Added in-app Documentation Center routes and pages. Files affected: `public/app.js`, `public/styles.css`, `server.js`, `docs/rules.md`, `docs/changelog.md`, `tasks.md`.
 

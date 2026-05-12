@@ -181,5 +181,5 @@ This file is the source of truth for implementation order. It follows the produc
 ## Clarifying Questions
 
 - Resolved: temporary test meal and probe files have been removed.
-- Resolved: no backup/export in the MVP.
+- Resolved: backup/export was added later as Supabase migration preparation, not as original MVP runtime functionality.
 - Resolved: app is intended for use on this PC only.

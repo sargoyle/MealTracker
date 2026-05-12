@@ -911,6 +911,7 @@ function architectureDocs() {
       ["Backend", "<code>server.js</code>", "Local HTTP server, REST API, validation, uploads, and static file serving."],
       ["Database", "<code>data/meals.sqlite</code>", "Persistent meal records and dinner order history."],
       ["Uploads", "<code>data/uploads/</code>", "Saved pasted, dropped, or selected image files."],
+      ["Backup exports", "<code>scripts/export-sqlite-backup.js</code> and <code>backup/exports/</code>", "Read-only JSON and upload snapshots for Supabase migration preparation."],
       ["Project docs", "<code>docs/masterplan.md</code>, <code>docs/tasks.md</code>, <code>docs/rules.md</code>, <code>docs/changelog.md</code>", "Source of truth for vision, implementation order, decisions, and history."],
     ])}
     <section class="docs-section">
@@ -926,6 +927,10 @@ function architectureDocs() {
         "  data/",
         "    meals.sqlite",
         "    uploads/",
+        "  scripts/",
+        "    export-sqlite-backup.js",
+        "  backup/",
+        "    exports/",
         "  docs/",
         "    project-knowledge.md",
         "    rules.md",
@@ -940,6 +945,10 @@ function architectureDocs() {
     <section class="docs-section">
       <h2>Frontend And Backend Connection</h2>
       <p>The browser renders routes and calls <code>fetch()</code> through the shared <code>api()</code> helper. The Node server handles <code>/api/*</code>, validates input, updates SQLite, and returns JSON. Image uploads are posted as data URLs and returned as local <code>/uploads/*</code> paths.</p>
+    </section>
+    <section class="docs-section">
+      <h2>Migration Export</h2>
+      <p><code>npm run export:backup</code> creates a timestamped snapshot under <code>backup/exports/</code> with <code>meals.json</code>, <code>meal_orders.json</code>, copied uploads, and manifests. It opens SQLite read-only and does not change app runtime behaviour.</p>
     </section>
     <section class="docs-section">
       <h2>Database Schema Overview</h2>
@@ -1081,7 +1090,7 @@ function dependenciesDocs() {
     <p>The MVP intentionally has a very small dependency surface. There are no third-party services, hosted databases, auth providers, or package dependencies declared in <code>package.json</code>.</p>
     ${docsTable(["Dependency", "Used by", "Why it exists", "If removed"], [
       ["Node.js", "<code>server.js</code>", "Runs the local HTTP server and built-in modules.", "The app cannot serve pages, APIs, uploads, or SQLite data."],
-      ["<code>node:sqlite</code>", "Backend storage", "Provides local SQLite persistence without an external database service.", "Meal and order data cannot be saved persistently."],
+      ["<code>node:sqlite</code>", "Backend storage and export script", "Provides local SQLite persistence and read-only migration exports without an external database service.", "Meal and order data cannot be saved persistently or exported from SQLite."],
       ["SQLite file", "<code>data/meals.sqlite</code>", "Stores meals and order history on this PC.", "Existing saved meals and orders are unavailable unless restored."],
       ["Browser Fetch API", "<code>api()</code> helper", "Calls local REST endpoints from the frontend.", "The UI cannot load or save app data."],
       ["Browser FileReader API", "<code>uploadFile()</code>", "Converts selected, dropped, and pasted images into uploadable data URLs.", "Image paste/file upload previews stop working."],
@@ -1093,6 +1102,12 @@ function dependenciesDocs() {
       ${docsCode([
         "npm start",
         "  Runs node server.js at http://localhost:4173 by default.",
+        "",
+        "node scripts/export-sqlite-backup.js",
+        "  Creates a read-only Supabase migration snapshot in backup/exports/.",
+        "",
+        "npm run export:backup",
+        "  Runs the same export script when npm is available.",
       ].join("\n"))}
     </section>
   `;
