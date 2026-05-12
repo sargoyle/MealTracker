@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - 2026-05-04: Added in-app Documentation Center routes and pages. Files affected: `public/app.js`, `public/styles.css`, `server.js`, `docs/rules.md`, `docs/changelog.md`, `tasks.md`.
 
 ### Changed
+- 2026-05-13: Migrated existing local SQLite meals, order history, and uploaded images into Supabase. Files affected: `data/meals.sqlite`, `data/uploads/`, Supabase `meals`, `meal_orders`, `meal_with_stats`, and `meal-images` storage.
 - 2026-05-12: Replaced runtime SQLite/local upload access with Supabase Postgres REST and Supabase Storage access using Vercel-compatible Supabase environment variables. Files affected: `server.js`, `.env.example`, `package.json`, `README.md`, `masterplan.md`, `tasks.md`, `docs/masterplan.md`, `docs/rules.md`, `docs/tasks.md`, `docs/changelog.md`, `public/app.js`, `docs/supabase-migration.md`.
 - 2026-05-10: Completed remaining verification tasks for edit flow, remove flow, pasted screenshot persistence, and mobile usability. Files affected: `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-04: Updated project knowledge workflow and added docs-folder masterplan/tasks sources. Files affected: `docs/project-knowledge.md`, `docs/masterplan.md`, `docs/tasks.md`, `docs/rules.md`, `docs/changelog.md`, `tasks.md`, `public/app.js`.
