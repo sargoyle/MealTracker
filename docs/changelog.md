@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Initial project setup
+- 2026-05-12: Added direct dry-run capable SQLite-to-Supabase migration script for local data and uploads. Files affected: `scripts/migrate-sqlite-to-supabase.js`, `package.json`, `README.md`, `docs/supabase-migration.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-12: Added Supabase import script for exported SQLite data and uploaded files. Files affected: `scripts/import-supabase-data.js`, `package.json`, `README.md`, `docs/supabase-migration.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-12: Added Supabase/Postgres schema migration and Storage/RLS migration notes. Files affected: `supabase/migrations/202605120001_create_meal_tracker_schema.sql`, `docs/supabase-migration.md`, `README.md`, `docs/rules.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`, `public/app.js`.
 - 2026-05-12: Added read-only SQLite/export snapshot process for Supabase migration preparation. Files affected: `scripts/export-sqlite-backup.js`, `backup/exports/.gitkeep`, `.gitignore`, `package.json`, `README.md`, `masterplan.md`, `tasks.md`, `docs/masterplan.md`, `docs/rules.md`, `docs/tasks.md`, `docs/changelog.md`, `public/app.js`.

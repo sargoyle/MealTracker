@@ -91,7 +91,33 @@ The current app runtime expects this schema in Supabase.
 
 ## Import existing local data into Supabase
 
-After creating the Supabase schema and bucket, import the latest local export:
+After creating the Supabase schema and bucket, migrate directly from the old local SQLite database and upload folder.
+
+First run a dry run:
+
+```powershell
+npm run migrate:supabase:dry-run
+```
+
+The dry run prints how many meals, meal orders, and upload files would be migrated without writing to Supabase.
+
+Then run the real migration:
+
+```powershell
+npm run migrate:supabase
+```
+
+This direct migration script:
+
+- Reads `data/meals.sqlite` in read-only mode.
+- Reads upload files from `data/uploads/`.
+- Uploads local files to Supabase Storage under `legacy/<filename>`.
+- Rewrites old `/uploads/<filename>` image values to Supabase Storage public URLs.
+- Upserts `meals` first, then `meal_orders`, preserving existing IDs.
+- Is safe to rerun because records are upserted by `id` and Storage uploads use upsert.
+- Does not delete or alter `data/meals.sqlite` or `data/uploads/`.
+
+There is also an older export-folder import path if needed:
 
 ```powershell
 npm run import:supabase
@@ -103,7 +129,7 @@ Or import a specific export folder:
 npm run import:supabase -- backup/exports/2026-05-12T09-41-51Z
 ```
 
-The import script:
+The export-folder import script:
 
 - Reads `meals.json`, `meal_orders.json`, and `uploads-manifest.json`.
 - Uploads exported files to Supabase Storage under `legacy/<filename>`.

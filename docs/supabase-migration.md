@@ -105,7 +105,16 @@ SUPABASE_STORAGE_BUCKET=meal-images
 
 ## Import Existing Exported Data
 
-After the SQL migration has run, import the latest export:
+After the SQL migration has run, prefer the direct local SQLite migration:
+
+```powershell
+npm run migrate:supabase:dry-run
+npm run migrate:supabase
+```
+
+The direct migration reads `data/meals.sqlite` read-only, uploads files from `data/uploads/` to `meal-images/legacy/<filename>`, rewrites `/uploads/<filename>` image values to Supabase Storage public URLs, and upserts `meals` before `meal_orders`.
+
+An export-folder import path is still available if needed:
 
 ```powershell
 npm run import:supabase
@@ -117,7 +126,7 @@ Or import a specific export folder:
 npm run import:supabase -- backup/exports/2026-05-12T09-41-51Z
 ```
 
-The script uploads exported files to `meal-images/legacy/<filename>`, rewrites old `/uploads/<filename>` fields to Supabase public URLs, and upserts `meals` before `meal_orders` so foreign keys are preserved.
+The export import script uploads exported files to `meal-images/legacy/<filename>`, rewrites old `/uploads/<filename>` fields to Supabase public URLs, and upserts `meals` before `meal_orders` so foreign keys are preserved.
 
 ## Assumptions
 
