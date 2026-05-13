@@ -43,6 +43,9 @@ Keep entries concise. One line per decision when possible.
 - Backup/export must preserve existing meal and meal order IDs and must not alter `data/meals.sqlite` or `data/uploads/`.
 - Supabase schema must preserve existing UUID IDs, meal/order relationships, timestamp fields, and current enum-style validation values.
 - `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be exposed in browser JavaScript.
+- Keep usage focused on Sara's PC; do not prioritize LAN/mobile access setup unless the requirement changes.
+- Do not add a settings/help storage note unless a settings/help screen is introduced; current runtime storage is Supabase, not local SQLite.
+- Keep duplicate-meal as a deferred convenience feature; implement it only if Sara asks for it.
 
 ## Integrations
 

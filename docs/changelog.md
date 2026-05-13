@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file.
 - 2026-05-04: Added in-app Documentation Center routes and pages. Files affected: `public/app.js`, `public/styles.css`, `server.js`, `docs/rules.md`, `docs/changelog.md`, `tasks.md`.
 
 ### Changed
+- 2026-05-13: Resolved remaining polish decisions by documenting that no local-storage note is needed without a settings/help screen and that duplicate-meal remains deferred until requested. Files affected: `docs/rules.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
+- 2026-05-13: Confirmed PC-focused scope and recorded that LAN/mobile access setup should not be prioritized unless requirements change. Files affected: `docs/rules.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
+- 2026-05-13: Verified the production Vercel deployment reads Supabase meal/order data and migrated Supabase Storage image URLs. Files affected: `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
+- 2026-05-13: Improved first-time and no-order empty states on Home, Meals, and Orders, and updated the in-app component docs for the empty-state helper. Files affected: `public/app.js`, `public/styles.css`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-13: Locked the Orders table Meal, Rating, and Count columns so only Thursday date columns scroll horizontally. Files affected: `public/app.js`, `public/styles.css`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-13: Migrated existing local SQLite meals, order history, and uploaded images into Supabase. Files affected: `data/meals.sqlite`, `data/uploads/`, Supabase `meals`, `meal_orders`, `meal_with_stats`, and `meal-images` storage.
 - 2026-05-12: Replaced runtime SQLite/local upload access with Supabase Postgres REST and Supabase Storage access using Vercel-compatible Supabase environment variables. Files affected: `server.js`, `.env.example`, `package.json`, `README.md`, `masterplan.md`, `tasks.md`, `docs/masterplan.md`, `docs/rules.md`, `docs/tasks.md`, `docs/changelog.md`, `public/app.js`, `docs/supabase-migration.md`.

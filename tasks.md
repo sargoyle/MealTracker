@@ -142,10 +142,10 @@ This file is the source of truth for implementation order. It follows the produc
 
 ## 10. Next Polish Pass
 
-- [ ] Add clearer empty states for first-time use and no weekly matches.
-- [ ] Add a small “data stored locally” note in settings/help if a settings screen is added.
-- [ ] Consider a one-click “duplicate meal” action later for similar weekly items.
-- [ ] Keep usage focused on this PC; do not prioritize LAN/mobile access setup unless the requirement changes.
+- [x] Add clearer empty states for first-time use and no weekly matches.
+- [x] Resolve storage-note task: no settings/help screen exists, and runtime storage is now Supabase rather than local-only storage.
+- [x] Consider one-click duplicate meal later: defer until Sara asks for it.
+- [x] Keep usage focused on this PC; do not prioritize LAN/mobile access setup unless the requirement changes.
 
 ## 11. Project Operating Rules
 
@@ -179,7 +179,7 @@ This file is the source of truth for implementation order. It follows the produc
 - [x] Run the Supabase import against the production project after environment variables are configured.
 - [x] Replace SQLite data access with Supabase/Postgres data access.
 - [x] Replace local upload storage with Supabase Storage.
-- [ ] Verify Vercel deployment with Supabase-backed data and uploads.
+- [x] Verify Vercel deployment with Supabase-backed data and uploads.
 
 ## Clarifying Questions
 

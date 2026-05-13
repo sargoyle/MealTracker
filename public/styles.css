@@ -812,6 +812,22 @@ textarea:focus {
   color: var(--muted);
 }
 
+.empty h2 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 20px;
+}
+
+.empty p {
+  max-width: 520px;
+  margin: 0 auto 16px;
+  color: var(--secondary);
+}
+
+.empty .button {
+  display: inline-flex;
+}
+
 .error {
   color: #fecaca;
   background: rgba(239, 68, 68, 0.12);

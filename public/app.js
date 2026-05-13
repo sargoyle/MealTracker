@@ -248,8 +248,23 @@ function select(name, options, value, label) {
   `;
 }
 
-function renderMealList(meals) {
-  return meals.length ? `<div class="meal-list">${meals.map(mealCard).join("")}</div>` : `<div class="card empty">No meals found matching your criteria.</div>`;
+function emptyState(title, body, action = "") {
+  return `
+    <div class="card empty">
+      <h2>${escapeHtml(title)}</h2>
+      <p>${escapeHtml(body)}</p>
+      ${action}
+    </div>
+  `;
+}
+
+function renderMealList(meals, empty = {}) {
+  if (meals.length) return `<div class="meal-list">${meals.map(mealCard).join("")}</div>`;
+  return emptyState(
+    empty.title || "No meals found",
+    empty.body || "Try changing the search or filters.",
+    empty.action || "",
+  );
 }
 
 function activeFilterSummary() {
@@ -265,6 +280,17 @@ async function renderHome() {
   const meals = await loadMeals({ status: "Active", rating: "All", meal_type: "All", search: "", sort: "last_ordered_date" });
   const counts = Object.fromEntries(enums.ratings.slice(1).map((rating) => [rating, meals.filter((meal) => meal.rating === rating).length]));
   const recent = meals.filter((meal) => meal.last_ordered_date).slice(0, 5);
+  const recentEmpty = meals.length
+    ? {
+        title: "No orders recorded yet",
+        body: "Add dinner orders from the Orders page and your most recent meals will appear here.",
+        action: `<a class="button" href="#/orders">Open Orders</a>`,
+      }
+    : {
+        title: "No meals yet",
+        body: "Add your first meal, rate it, and start building your personal meal memory.",
+        action: `<a class="button primary" href="#/add">Add Meal</a>`,
+      };
   layout(`
     ${pageHeader("Meal Tracker", "Track what you liked, what was fine, and what to avoid next time.", `<a class="button primary" href="#/add">Add Meal</a>`)}
     <section class="grid summary-grid">
@@ -280,7 +306,7 @@ async function renderHome() {
         <h2>Recent meals</h2>
         <a class="button" href="#/meals">View all</a>
       </div>
-      ${renderMealList(recent)}
+      ${renderMealList(recent, recentEmpty)}
     </section>
   `);
 }
@@ -289,6 +315,16 @@ async function renderMeals() {
   const urlParams = routeSearchParams();
   if (urlParams.get("rating")) state.filters.rating = urlParams.get("rating");
   const meals = await loadMeals();
+  const mealListEmpty = state.filters.search || state.filters.rating !== "All" || state.filters.meal_type !== "All" || state.filters.status !== "Active"
+    ? {
+        title: "No meals match these filters",
+        body: "Clear the search or loosen the rating, type, or status filters.",
+      }
+    : {
+        title: "No active meals yet",
+        body: "Add a meal with a name, rating, and any notes you want to remember.",
+        action: `<a class="button primary" href="#/add">Add Meal</a>`,
+      };
   layout(`
     ${pageHeader("Meals", "Search, filter, and scan your personal meal library.", `<a class="button primary" href="#/add">Add Meal</a>`)}
     <form class="filters compact-filters" id="filters">
@@ -309,7 +345,7 @@ async function renderMeals() {
         ${select("sort", ["meal_name", "last_ordered_date", "order_count", "rating"], state.filters.sort, "Sort by")}
       </div>
     </form>
-    ${renderMealList(meals)}
+    ${renderMealList(meals, mealListEmpty)}
   `);
 
   document.querySelector("#filter-toggle").addEventListener("click", () => {
@@ -326,7 +362,17 @@ async function renderMeals() {
     const updated = await loadMeals();
     document.querySelector(".filter-summary").textContent = activeFilterSummary();
     document.querySelector(".meal-list, .empty")?.remove();
-    document.querySelector("#filters").insertAdjacentHTML("afterend", renderMealList(updated));
+    const updatedEmpty = state.filters.search || state.filters.rating !== "All" || state.filters.meal_type !== "All" || state.filters.status !== "Active"
+      ? {
+          title: "No meals match these filters",
+          body: "Clear the search or loosen the rating, type, or status filters.",
+        }
+      : {
+          title: "No active meals yet",
+          body: "Add a meal with a name, rating, and any notes you want to remember.",
+          action: `<a class="button primary" href="#/add">Add Meal</a>`,
+        };
+    document.querySelector("#filters").insertAdjacentHTML("afterend", renderMealList(updated, updatedEmpty));
   });
 }
 
@@ -646,6 +692,11 @@ async function renderOrders() {
         <button class="button primary order-add-button" type="submit">Add to week</button>
       </div>
     </form>
+    ${!data.meals.length ? emptyState(
+      "No dinner meals yet",
+      "Add a dinner meal first, then return here to record the Thursday weeks you ordered it.",
+      `<a class="button primary" href="#/add">Add Meal</a>`,
+    ) : `
     <section class="orders-table-wrap card">
       <table class="orders-table">
         <thead>
@@ -667,7 +718,7 @@ async function renderOrders() {
           </tr>
         </thead>
         <tbody>
-          ${sortedMeals.length ? sortedMeals.map((meal) => `
+          ${sortedMeals.map((meal) => `
             <tr>
               <th class="orders-sticky-col orders-meal-col"><a class="order-meal-link" data-meal-id="${escapeHtml(meal.id)}" href="#/meal/${meal.id}">${escapeHtml(meal.meal_name)}</a></th>
               <td class="orders-sticky-col orders-rating-col">
@@ -694,19 +745,19 @@ async function renderOrders() {
                 ` : ""}</td>`;
               }).join("")}
             </tr>
-          `).join("") : `
-            <tr>
-              <td colspan="${data.weeks.length + 3}" class="empty">Add dinner meals first, then record orders here.</td>
-            </tr>
-          `}
+          `).join("")}
           ${data.meals.length && !data.weeks.length ? `
             <tr>
-              <td colspan="3" class="empty">No dinner orders recorded yet. Add a meal to a Thursday week above.</td>
+              <td colspan="3" class="empty">
+                <h2>No dinner orders recorded yet</h2>
+                <p>Choose a Thursday week, search for a dinner meal, then select Add to week.</p>
+              </td>
             </tr>
           ` : ""}
         </tbody>
       </table>
     </section>
+    `}
   `);
   document.querySelector("#ordered_week_start_date").addEventListener("change", (event) => {
     state.orders.ordered_week_start_date = thursdayWeekStart(event.target.value);
@@ -977,7 +1028,8 @@ function componentsDocs() {
       ["<code>nav()</code>", "App shell", "Reads the current route and renders desktop plus mobile navigation."],
       ["<code>pageHeader(title, subtitle, action)</code>", "Home, Meals, Orders, Detail, Forms, Docs", "Title, optional subtitle, optional action HTML."],
       ["<code>mealCard(meal)</code>", "Home recent meals and Meals list", "Meal object with name, type, image, rating, notes, date, and order count."],
-      ["<code>renderMealList(meals)</code>", "Home and Meals", "Array of meal records."],
+      ["<code>emptyState(title, body, action)</code>", "Home, Meals, and Orders", "Title, supporting text, and optional action HTML."],
+      ["<code>renderMealList(meals, empty)</code>", "Home and Meals", "Array of meal records plus optional empty-state copy/action."],
       ["<code>renderHome()</code>", "Home route", "Loads active meals and renders rating summaries plus recent meals."],
       ["<code>renderMeals()</code>", "Meals route", "Uses <code>state.filters</code> and query params for list filtering."],
       ["<code>renderOrders()</code>", "Orders route", "Loads meals, orders, week headers, sort state, focus state, and fixed Meal/Rating/Count columns."],
