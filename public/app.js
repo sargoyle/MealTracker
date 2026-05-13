@@ -650,9 +650,9 @@ async function renderOrders() {
       <table class="orders-table">
         <thead>
           <tr>
-            <th>Meal</th>
-            <th>Rating</th>
-            <th>
+            <th class="orders-sticky-col orders-meal-col">Meal</th>
+            <th class="orders-sticky-col orders-rating-col">Rating</th>
+            <th class="orders-sticky-col orders-count-col">
               <button class="order-count-sort ${state.orders.sort_count_direction ? "active" : ""}" type="button" title="Sort meals by total order count">
                 Count${state.orders.sort_count_direction === "asc" ? " ↑" : state.orders.sort_count_direction === "desc" ? " ↓" : ""}
               </button>
@@ -669,15 +669,15 @@ async function renderOrders() {
         <tbody>
           ${sortedMeals.length ? sortedMeals.map((meal) => `
             <tr>
-              <th><a class="order-meal-link" data-meal-id="${escapeHtml(meal.id)}" href="#/meal/${meal.id}">${escapeHtml(meal.meal_name)}</a></th>
-              <td>
+              <th class="orders-sticky-col orders-meal-col"><a class="order-meal-link" data-meal-id="${escapeHtml(meal.id)}" href="#/meal/${meal.id}">${escapeHtml(meal.meal_name)}</a></th>
+              <td class="orders-sticky-col orders-rating-col">
                 <select class="order-rating-select rating-${String(meal.rating).replace(" ", "-")}" data-meal-id="${escapeHtml(meal.id)}" aria-label="Rating for ${escapeHtml(meal.meal_name)}">
                   ${enums.ratings.slice(1).map((rating) => `
                     <option value="${escapeHtml(rating)}" ${rating === meal.rating ? "selected" : ""}>${escapeHtml(rating)}</option>
                   `).join("")}
                 </select>
               </td>
-              <td>${meal.order_count || 0}</td>
+              <td class="orders-sticky-col orders-count-col">${meal.order_count || 0}</td>
               ${data.weeks.map((week) => {
                 const order = orderLookup.get(`${meal.id}:${week}`);
                 return `<td>${order ? `
@@ -980,7 +980,7 @@ function componentsDocs() {
       ["<code>renderMealList(meals)</code>", "Home and Meals", "Array of meal records."],
       ["<code>renderHome()</code>", "Home route", "Loads active meals and renders rating summaries plus recent meals."],
       ["<code>renderMeals()</code>", "Meals route", "Uses <code>state.filters</code> and query params for list filtering."],
-      ["<code>renderOrders()</code>", "Orders route", "Loads meals, orders, week headers, sort state, and focus state."],
+      ["<code>renderOrders()</code>", "Orders route", "Loads meals, orders, week headers, sort state, focus state, and fixed Meal/Rating/Count columns."],
       ["<code>renderDetail(id)</code>", "Meal detail route", "Meal id."],
       ["<code>formMarkup(meal)</code>", "Add/Edit meal", "Existing meal object or defaults for a new meal."],
       ["<code>renderForm(id)</code>", "Add/Edit routes", "Optional meal id for edit mode."],

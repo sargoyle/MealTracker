@@ -71,6 +71,7 @@ This file is the source of truth for implementation order. It follows the produc
 - [x] Preserve Orders table focus and scroll position after adding a meal to a Thursday week.
 - [x] Preserve Orders table focus and scroll position after sorting by a Thursday column.
 - [x] Orders screen Count column can be clicked to sort by total order count.
+- [x] Orders screen keeps Meal, Rating, and Count columns locked while only Thursday date columns scroll.
 - [x] Show ingredients and nutritional information images on meal detail screens.
 - [x] Meal detail screen shows full order history.
 - [x] Meal detail order history shows the order count and avoids repeating the same date twice.

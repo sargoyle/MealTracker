@@ -653,6 +653,42 @@ textarea:focus {
   min-width: 170px;
 }
 
+.orders-table .orders-sticky-col {
+  position: sticky;
+  background: #172033;
+}
+
+.orders-table .orders-meal-col {
+  left: 0;
+  min-width: 260px;
+  width: 260px;
+}
+
+.orders-table .orders-rating-col {
+  left: 260px;
+  min-width: 150px;
+  width: 150px;
+}
+
+.orders-table .orders-count-col {
+  left: 410px;
+  min-width: 96px;
+  width: 96px;
+  box-shadow: 12px 0 18px -18px rgba(0, 0, 0, 0.9);
+}
+
+.orders-table thead .orders-sticky-col {
+  z-index: 4;
+}
+
+.orders-table tbody .orders-sticky-col {
+  z-index: 2;
+}
+
+.orders-table tbody .orders-count-col {
+  text-align: center;
+}
+
 .order-week-sort,
 .order-count-sort {
   appearance: none;
@@ -1042,6 +1078,34 @@ textarea:focus {
 
   .orders-table-wrap {
     margin-bottom: 18px;
+  }
+
+  .orders-table th,
+  .orders-table td {
+    padding: 10px 8px;
+  }
+
+  .orders-table .orders-meal-col {
+    left: 0;
+    min-width: 170px;
+    width: 170px;
+  }
+
+  .orders-table .orders-rating-col {
+    left: 170px;
+    min-width: 124px;
+    width: 124px;
+  }
+
+  .orders-table .orders-count-col {
+    left: 294px;
+    min-width: 64px;
+    width: 64px;
+  }
+
+  .orders-table .order-rating-select {
+    min-width: 108px;
+    padding-right: 24px;
   }
 
   .meal-card {
