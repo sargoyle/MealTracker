@@ -76,8 +76,10 @@ function getThursdayWeekStart(value) {
 }
 
 function validateMeal(payload, partial = false) {
+  const archiveValue = payload.archive;
   const meal = {
     meal_name: cleanOptional(payload.meal_name),
+    meal_provider: cleanOptional(payload.meal_provider),
     meal_type: cleanOptional(payload.meal_type) || "Dinner",
     image_url: cleanOptional(payload.image_url),
     ingredients_image_url: cleanOptional(payload.ingredients_image_url),
@@ -90,6 +92,7 @@ function validateMeal(payload, partial = false) {
     week_number: cleanOptional(payload.week_number),
     day_available: cleanOptional(payload.day_available),
     status: cleanOptional(payload.status) || "Active",
+    archive: archiveValue === true || archiveValue === "true" || archiveValue === "on" || archiveValue === "1" || archiveValue === 1,
   };
 
   if (!partial || payload.meal_name !== undefined) {
@@ -231,6 +234,7 @@ async function getMeals(url) {
   if (params.get("week_number")) query.week_number = `eq.${Number(params.get("week_number"))}`;
   if (params.get("weekly") === "true") query.meal_type = "in.(Breakfast,Lunch)";
   if (params.get("search")) query.meal_name = `ilike.*${params.get("search")}*`;
+  if (params.get("show_archived") !== "true") query.archive = "is.false";
 
   const meals = await supabaseRest("meal_with_stats", { query });
   return sortMeals(meals.map(resolveMealImageUrls), params.get("sort") || "meal_name");
@@ -255,11 +259,11 @@ async function getMeal(id) {
 
 async function getOrders() {
   const meals = sortMeals(await supabaseRest("meal_with_stats", {
-    query: { select: "*", meal_type: "eq.Dinner", status: "eq.Active" },
+    query: { select: "*", meal_type: "eq.Dinner", status: "eq.Active", archive: "is.false" },
   }), "meal_name").map(resolveMealImageUrls);
 
   const dinnerMeals = await supabaseRest("meals", {
-    query: { select: "id,meal_name,rating,meal_type", meal_type: "eq.Dinner" },
+    query: { select: "id,meal_name,rating,meal_type", meal_type: "eq.Dinner", archive: "is.false" },
   });
   const dinnerMealMap = new Map(dinnerMeals.map((meal) => [meal.id, meal]));
   const rawOrders = await supabaseRest("meal_orders", {
@@ -294,7 +298,7 @@ async function createOrder(payload) {
   const mealId = cleanOptional(payload.meal_id);
   if (!mealId) throw new Error("Meal is required.");
   const meals = await supabaseRest("meals", {
-    query: { select: "id,meal_type", id: `eq.${mealId}`, status: "eq.Active", limit: "1" },
+    query: { select: "id,meal_type", id: `eq.${mealId}`, status: "eq.Active", archive: "is.false", limit: "1" },
   });
   const meal = meals[0];
   if (!meal) throw new Error("Meal not found.");

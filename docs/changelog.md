@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Initial project setup
+- 2026-05-18: Added Meal Provider and Archive fields, including Supabase migration, add/edit form controls, detail/list display, retained Meals archived filter, and Orders archived filtering. Files affected: `server.js`, `public/app.js`, `public/styles.css`, `supabase/migrations/202605120001_create_meal_tracker_schema.sql`, `supabase/migrations/202605180001_add_provider_archive_to_meals.sql`, `README.md`, `docs/supabase-migration.md`, `docs/rules.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-12: Added direct dry-run capable SQLite-to-Supabase migration script for local data and uploads. Files affected: `scripts/migrate-sqlite-to-supabase.js`, `package.json`, `README.md`, `docs/supabase-migration.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-12: Added Supabase import script for exported SQLite data and uploaded files. Files affected: `scripts/import-supabase-data.js`, `package.json`, `README.md`, `docs/supabase-migration.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-12: Added Supabase/Postgres schema migration and Storage/RLS migration notes. Files affected: `supabase/migrations/202605120001_create_meal_tracker_schema.sql`, `docs/supabase-migration.md`, `README.md`, `docs/rules.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`, `public/app.js`.
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - 2026-05-04: Added in-app Documentation Center routes and pages. Files affected: `public/app.js`, `public/styles.css`, `server.js`, `docs/rules.md`, `docs/changelog.md`, `tasks.md`.
 
 ### Changed
+- 2026-05-18: Updated the provider/archive Supabase migration so all existing meals are set to `Lite n Easy`. Files affected: `supabase/migrations/202605180001_add_provider_archive_to_meals.sql`, `docs/changelog.md`.
 - 2026-05-13: Resolved remaining polish decisions by documenting that no local-storage note is needed without a settings/help screen and that duplicate-meal remains deferred until requested. Files affected: `docs/rules.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-13: Confirmed PC-focused scope and recorded that LAN/mobile access setup should not be prioritized unless requirements change. Files affected: `docs/rules.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-13: Verified the production Vercel deployment reads Supabase meal/order data and migrated Supabase Storage image URLs. Files affected: `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
@@ -25,7 +27,12 @@ All notable changes to this project will be documented in this file.
 - 2026-05-04: Updated project knowledge workflow and added docs-folder masterplan/tasks sources. Files affected: `docs/project-knowledge.md`, `docs/masterplan.md`, `docs/tasks.md`, `docs/rules.md`, `docs/changelog.md`, `tasks.md`, `public/app.js`.
 
 ### Fixed
+- 2026-05-18: Fixed the provider/archive Supabase migration to drop and recreate `meal_with_stats` and reload the Supabase schema cache, so `archive` can be saved and returned by the API. Files affected: `supabase/migrations/202605180001_add_provider_archive_to_meals.sql`, `docs/supabase-migration.md`, `docs/changelog.md`.
+- 2026-05-18: Fixed Archive checkbox saving by reading the edit form checkbox checked state directly and accepting common boolean checkbox values server-side. Files affected: `public/app.js`, `server.js`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 - 2026-05-10: Fixed mobile viewport overflow so the five-item bottom navigation and page actions stay visible. Files affected: `public/styles.css`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
+
+### Removed
+- 2026-05-18: Removed the in-app Docs page, Docs navigation item, documentation route handlers, and unused docs styles. Files affected: `public/app.js`, `public/styles.css`, `docs/rules.md`, `docs/tasks.md`, `tasks.md`, `docs/changelog.md`.
 
 ---
 

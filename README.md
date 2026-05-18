@@ -81,6 +81,12 @@ The first Supabase/Postgres migration is in:
 supabase/migrations/202605120001_create_meal_tracker_schema.sql
 ```
 
+For an existing Supabase project, apply this follow-up migration before deploying the provider/archive app changes:
+
+```text
+supabase/migrations/202605180001_add_provider_archive_to_meals.sql
+```
+
 Migration notes, Storage bucket planning, RLS recommendations, and dashboard apply instructions are in:
 
 ```text

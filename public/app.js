@@ -6,6 +6,14 @@ const enums = {
   days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
 };
 
+const initialShowArchived = (() => {
+  try {
+    return localStorage.getItem("meal-tracker-show-archived") === "true";
+  } catch {
+    return false;
+  }
+})();
+
 const state = {
   meals: [],
   currentMeal: null,
@@ -15,6 +23,7 @@ const state = {
     meal_type: "All",
     status: "Active",
     sort: "meal_name",
+    show_archived: initialShowArchived,
   },
   mealsFiltersOpen: false,
   orders: {
@@ -180,7 +189,6 @@ function routeSearchParams() {
 function isNavActive(href) {
   const path = currentRoutePath();
   if (href === "#/") return path === "#/" || path === "/";
-  if (href === "/docs") return path === "/docs" || path.startsWith("/docs/");
   return path === href;
 }
 
@@ -190,7 +198,6 @@ function nav() {
     ["#/meals", "Meals"],
     ["#/orders", "Orders"],
     ["#/add", "Add Meal"],
-    ["/docs", "Docs"],
   ];
   return `
     <aside class="sidebar">
@@ -224,12 +231,14 @@ function pageHeader(title, subtitle, action = "") {
 }
 
 function mealCard(meal) {
+  const provider = meal.meal_provider ? `${escapeHtml(meal.meal_provider)} · ` : "";
+  const archived = meal.archive ? "Archived · " : "";
   return `
     <a class="meal-card" href="#/meal/${meal.id}">
       ${imageMarkup(meal)}
       <div>
         <div class="meal-name">${escapeHtml(meal.meal_name)}</div>
-        <div class="meta">${escapeHtml(meal.meal_type)} · Last ordered: ${formatDate(meal.last_ordered_date)} · Ordered ${meal.order_count || 0} times</div>
+        <div class="meta">${provider}${archived}${escapeHtml(meal.meal_type)} · Last ordered: ${formatDate(meal.last_ordered_date)} · Ordered ${meal.order_count || 0} times</div>
         <div class="notes-preview">${escapeHtml(meal.notes || "No notes yet")}</div>
       </div>
       <span class="${badgeClass(meal.rating)}">${escapeHtml(meal.rating)}</span>
@@ -272,12 +281,13 @@ function activeFilterSummary() {
   if (state.filters.rating !== "All") labels.push(state.filters.rating);
   if (state.filters.meal_type !== "All") labels.push(state.filters.meal_type);
   if (state.filters.status !== "Active") labels.push(`Status: ${state.filters.status}`);
+  if (state.filters.show_archived) labels.push("Includes archived");
   if (state.filters.sort !== "meal_name") labels.push(`Sort: ${state.filters.sort.replaceAll("_", " ")}`);
   return labels.length ? labels.join(" · ") : "Active meals · Name sort";
 }
 
 async function renderHome() {
-  const meals = await loadMeals({ status: "Active", rating: "All", meal_type: "All", search: "", sort: "last_ordered_date" });
+  const meals = await loadMeals({ status: "Active", rating: "All", meal_type: "All", search: "", sort: "last_ordered_date", show_archived: false });
   const counts = Object.fromEntries(enums.ratings.slice(1).map((rating) => [rating, meals.filter((meal) => meal.rating === rating).length]));
   const recent = meals.filter((meal) => meal.last_ordered_date).slice(0, 5);
   const recentEmpty = meals.length
@@ -315,7 +325,7 @@ async function renderMeals() {
   const urlParams = routeSearchParams();
   if (urlParams.get("rating")) state.filters.rating = urlParams.get("rating");
   const meals = await loadMeals();
-  const mealListEmpty = state.filters.search || state.filters.rating !== "All" || state.filters.meal_type !== "All" || state.filters.status !== "Active"
+  const mealListEmpty = state.filters.search || state.filters.rating !== "All" || state.filters.meal_type !== "All" || state.filters.status !== "Active" || state.filters.show_archived
     ? {
         title: "No meals match these filters",
         body: "Clear the search or loosen the rating, type, or status filters.",
@@ -343,6 +353,10 @@ async function renderMeals() {
         ${select("meal_type", enums.mealTypes, state.filters.meal_type, "Meal type")}
         ${select("status", enums.statuses, state.filters.status, "Status")}
         ${select("sort", ["meal_name", "last_ordered_date", "order_count", "rating"], state.filters.sort, "Sort by")}
+        <label class="checkbox-field">
+          <input id="show_archived" name="show_archived" type="checkbox" ${state.filters.show_archived ? "checked" : ""} />
+          <span>Show archived meals</span>
+        </label>
       </div>
     </form>
     ${renderMealList(meals, mealListEmpty)}
@@ -358,11 +372,20 @@ async function renderMeals() {
   });
 
   document.querySelector("#filters").addEventListener("input", async (event) => {
-    state.filters[event.target.name] = event.target.value;
+    if (event.target.name === "show_archived") {
+      state.filters.show_archived = event.target.checked;
+      try {
+        localStorage.setItem("meal-tracker-show-archived", String(state.filters.show_archived));
+      } catch {
+        // Ignore storage failures; the checkbox still works for this session.
+      }
+    } else {
+      state.filters[event.target.name] = event.target.value;
+    }
     const updated = await loadMeals();
     document.querySelector(".filter-summary").textContent = activeFilterSummary();
     document.querySelector(".meal-list, .empty")?.remove();
-    const updatedEmpty = state.filters.search || state.filters.rating !== "All" || state.filters.meal_type !== "All" || state.filters.status !== "Active"
+    const updatedEmpty = state.filters.search || state.filters.rating !== "All" || state.filters.meal_type !== "All" || state.filters.status !== "Active" || state.filters.show_archived
       ? {
           title: "No meals match these filters",
           body: "Clear the search or loosen the rating, type, or status filters.",
@@ -383,7 +406,7 @@ function detailValue(label, value) {
 async function renderDetail(id) {
   const meal = await loadMeal(id);
   layout(`
-    ${pageHeader(meal.meal_name, `${meal.meal_type} · ${meal.status}`, `<a class="button" href="#/edit/${meal.id}">Edit meal</a>`)}
+    ${pageHeader(meal.meal_name, `${meal.meal_type} · ${meal.status}${meal.archive ? " · Archived" : ""}`, `<a class="button" href="#/edit/${meal.id}">Edit meal</a>`)}
     <section class="detail-grid">
       ${imageMarkup(meal, "hero-image")}
       <div class="detail-panel">
@@ -392,6 +415,8 @@ async function renderDetail(id) {
             <span class="${badgeClass(meal.rating)}">${escapeHtml(meal.rating)}</span>
             <p>${escapeHtml(meal.description || "No description yet.")}</p>
           </div>
+          ${detailValue("Meal provider", meal.meal_provider)}
+          ${detailValue("Archive", meal.archive ? "Yes" : "No")}
           ${detailValue("My notes", meal.notes)}
           ${detailValue("Most recent order", formatDate(meal.last_ordered_date))}
           ${detailValue("Times ordered", meal.order_count || 0)}
@@ -483,6 +508,10 @@ function formMarkup(meal = {}) {
           <label for="meal_name">Meal name</label>
           <input id="meal_name" name="meal_name" maxlength="200" required value="${value("meal_name")}" />
         </div>
+        <div class="field full">
+          <label for="meal_provider">Meal provider</label>
+          <input id="meal_provider" name="meal_provider" maxlength="200" value="${value("meal_provider")}" placeholder="e.g. Lite n Easy" />
+        </div>
         ${select("meal_type", ["Dinner", "Breakfast", "Lunch"], meal.meal_type || "Dinner", "Meal type")}
         ${select("rating", ["Favourite", "Fine", "Avoid", "Not rated"], meal.rating || "Not rated", "Rating")}
         ${imageField({
@@ -524,6 +553,10 @@ function formMarkup(meal = {}) {
         </div>
         ${select("day_available", ["", ...enums.days], meal.day_available || "", "Day available")}
         ${select("status", ["Active", "Removed"], meal.status || "Active", "Status")}
+        <label class="checkbox-field">
+          <input id="archive" name="archive" type="checkbox" value="true" ${meal.archive ? "checked" : ""} />
+          <span>Archive this meal</span>
+        </label>
         ${orderHistoryEditor(meal)}
       </div>
       <div class="actions">
@@ -621,6 +654,7 @@ async function renderForm(id = null) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const payload = Object.fromEntries(formData.entries());
+    payload.archive = Boolean(event.currentTarget.elements.archive?.checked);
     try {
       const data = await api(id ? `/api/meals/${id}` : "/api/meals", {
         method: id ? "PUT" : "POST",
@@ -870,342 +904,6 @@ async function renderOrders() {
   }
 }
 
-const docsPages = [
-  ["home", "Overview", "/docs"],
-  ["architecture", "Architecture", "/docs/architecture"],
-  ["components", "Components", "/docs/components"],
-  ["data-flow", "Data Flow", "/docs/data-flow"],
-  ["api", "API", "/docs/api"],
-  ["dependencies", "Dependencies", "/docs/dependencies"],
-];
-
-function docsCode(value) {
-  return `<pre class="docs-code"><code>${escapeHtml(value)}</code></pre>`;
-}
-
-function docsTable(headers, rows) {
-  return `
-    <div class="docs-table-wrap">
-      <table class="docs-table">
-        <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
-        <tbody>
-          ${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function docsShell(page, content) {
-  return `
-    <section class="docs-layout">
-      <aside class="docs-sidebar">
-        <div class="docs-sidebar-title">Documentation</div>
-        ${docsPages.map(([key, label, href]) => `
-          <a href="${href}" class="${page === key ? "active" : ""}">${escapeHtml(label)}</a>
-        `).join("")}
-      </aside>
-      <article class="docs-content">${content}</article>
-    </section>
-  `;
-}
-
-function docsHomeContent(metrics) {
-  const ratingCounts = Object.fromEntries(enums.ratings.slice(1).map((rating) => [rating, metrics.meals.filter((meal) => meal.rating === rating).length]));
-  return `
-    <div class="docs-intro">
-      <h2>Project Overview</h2>
-    <p>Meal Tracker is a personal app for remembering which meals to reorder, which were fine, and which to avoid. The current runtime stores meal data in Supabase Postgres and keeps meal images plus pasted ingredients and nutrition screenshots in Supabase Storage.</p>
-    </div>
-    <section class="docs-metric-grid">
-      <div><strong>${metrics.meals.length}</strong><span>Total meals</span></div>
-      <div><strong>${metrics.orders.length}</strong><span>Dinner orders</span></div>
-      <div><strong>${ratingCounts.Favourite || 0}</strong><span>Favourites</span></div>
-      <div><strong>${ratingCounts.Avoid || 0}</strong><span>Avoid</span></div>
-    </section>
-    <section class="docs-section">
-      <h2>Pages</h2>
-      <div class="docs-index">
-        ${docsPages.slice(1).map(([key, label, href]) => `
-          <a href="${href}">
-            <strong>${escapeHtml(label)}</strong>
-            <span>${escapeHtml(docsPageSummaries[key])}</span>
-          </a>
-        `).join("")}
-      </div>
-    </section>
-    <section class="docs-section">
-      <h2>Current Scope</h2>
-      <ul>
-        <li>Personal single-user meal library with ratings, notes, status, and reference images.</li>
-        <li>Dinner order history grouped by Thursday week with sortable counts and editable ratings.</li>
-        <li>No accounts, payments, scraping, AI parsing, nutrition calculations, recommendations, exports, or backups in the MVP.</li>
-      </ul>
-    </section>
-  `;
-}
-
-const docsPageSummaries = {
-  architecture: "Tech stack, folder structure, frontend/backend connection, and database schema.",
-  components: "Major frontend render functions, shared helpers, and their inputs.",
-  "data-flow": "How user actions move through the UI, API, Supabase Postgres, and back.",
-  api: "REST endpoints, request shapes, responses, and fetch examples.",
-  dependencies: "Runtime, browser APIs, local storage dependencies, and removal impact.",
-};
-
-function architectureDocs() {
-  return `
-    <h2>System Architecture</h2>
-    <p>The app is served by Node. The frontend is static HTML, CSS, and JavaScript in <code>public/</code>; the backend is <code>server.js</code>; runtime data persists to Supabase Postgres. Project knowledge lives in <code>docs/masterplan.md</code>, <code>docs/tasks.md</code>, <code>docs/rules.md</code>, and <code>docs/changelog.md</code>.</p>
-    ${docsTable(["Layer", "Current implementation", "Purpose"], [
-      ["Frontend", "<code>public/index.html</code>, <code>public/app.js</code>, <code>public/styles.css</code>", "Single-page app, routing, forms, tables, filtering, and dark UI."],
-      ["Backend", "<code>server.js</code>", "HTTP server, REST API, validation, Supabase data access, Storage uploads, and static file serving."],
-      ["Database", "Supabase Postgres", "Persistent meal records and dinner order history."],
-      ["Uploads", "Supabase Storage bucket <code>meal-images</code>", "Saved pasted, dropped, or selected image files."],
-      ["Backup exports", "<code>scripts/export-sqlite-backup.js</code> and <code>backup/exports/</code>", "Read-only JSON and upload snapshots for Supabase migration preparation."],
-      ["Supabase migration", "<code>supabase/migrations/</code> and <code>docs/supabase-migration.md</code>", "Postgres schema and Storage plan for the future Vercel-compatible runtime."],
-      ["Project docs", "<code>docs/masterplan.md</code>, <code>docs/tasks.md</code>, <code>docs/rules.md</code>, <code>docs/changelog.md</code>", "Source of truth for vision, implementation order, decisions, and history."],
-    ])}
-    <section class="docs-section">
-      <h2>Folder Structure</h2>
-      ${docsCode([
-        "Meal Tracker/",
-        "  server.js",
-        "  package.json",
-        "  public/",
-        "    index.html",
-        "    app.js",
-        "    styles.css",
-        "  data/",
-        "    meals.sqlite       # legacy export source only",
-        "    uploads/           # legacy export source only",
-        "  scripts/",
-        "    export-sqlite-backup.js",
-        "  backup/",
-        "    exports/",
-        "  supabase/",
-        "    migrations/",
-        "      202605120001_create_meal_tracker_schema.sql",
-        "  docs/",
-        "    project-knowledge.md",
-        "    rules.md",
-        "    changelog.md",
-        "  masterplan.md",
-        "  implementation-plan.md",
-        "  design-guidelines.md",
-        "  app-flow-pages-and-roles.md",
-        "  tasks.md",
-      ].join("\n"))}
-    </section>
-    <section class="docs-section">
-      <h2>Frontend And Backend Connection</h2>
-      <p>The browser renders routes and calls <code>fetch()</code> through the shared <code>api()</code> helper. The Node server handles <code>/api/*</code>, validates input, updates Supabase Postgres, and returns JSON. Image uploads are posted as data URLs and returned as Supabase Storage URLs.</p>
-    </section>
-    <section class="docs-section">
-      <h2>Migration Export</h2>
-      <p><code>npm run export:backup</code> creates a timestamped snapshot under <code>backup/exports/</code> with <code>meals.json</code>, <code>meal_orders.json</code>, copied uploads, and manifests. It opens the old SQLite database read-only and is kept for migration safety.</p>
-    </section>
-    <section class="docs-section">
-      <h2>Supabase Preparation</h2>
-      <p><code>supabase/migrations/202605120001_create_meal_tracker_schema.sql</code> creates equivalent Postgres tables for <code>meals</code> and <code>meal_orders</code>, keeps UUID IDs importable, adds current validation checks, indexes list/order access patterns, and provides a compatibility view named <code>meal_with_stats</code>. Storage and RLS notes live in <code>docs/supabase-migration.md</code>.</p>
-    </section>
-    <section class="docs-section">
-      <h2>Database Schema Overview</h2>
-      ${docsTable(["Table", "Important columns", "Role"], [
-        ["<code>meals</code>", "<code>id</code>, <code>meal_name</code>, <code>meal_type</code>, <code>image_url</code>, <code>ingredients_image_url</code>, <code>nutrition_image_url</code>, <code>description</code>, <code>rating</code>, <code>notes</code>, <code>last_ordered_date</code>, <code>season</code>, <code>week_number</code>, <code>day_available</code>, <code>status</code>, <code>created_at</code>, <code>updated_at</code>", "Main meal library."],
-        ["<code>meal_orders</code>", "<code>id</code>, <code>meal_id</code>, <code>ordered_week_start_date</code>, <code>created_at</code>, <code>updated_at</code>", "Dinner order history, one row per meal per Thursday week."],
-      ])}
-    </section>
-  `;
-}
-
-function componentsDocs() {
-  return `
-    <h2>Component Library</h2>
-    <p>The frontend is not React-based in its current state. Components are JavaScript render helpers that return HTML strings and then attach event handlers after rendering.</p>
-    ${docsTable(["Component/helper", "Where used", "Inputs"], [
-      ["<code>layout(content)</code>", "Every page", "HTML string for the current page body."],
-      ["<code>nav()</code>", "App shell", "Reads the current route and renders desktop plus mobile navigation."],
-      ["<code>pageHeader(title, subtitle, action)</code>", "Home, Meals, Orders, Detail, Forms, Docs", "Title, optional subtitle, optional action HTML."],
-      ["<code>mealCard(meal)</code>", "Home recent meals and Meals list", "Meal object with name, type, image, rating, notes, date, and order count."],
-      ["<code>emptyState(title, body, action)</code>", "Home, Meals, and Orders", "Title, supporting text, and optional action HTML."],
-      ["<code>renderMealList(meals, empty)</code>", "Home and Meals", "Array of meal records plus optional empty-state copy/action."],
-      ["<code>renderHome()</code>", "Home route", "Loads active meals and renders rating summaries plus recent meals."],
-      ["<code>renderMeals()</code>", "Meals route", "Uses <code>state.filters</code> and query params for list filtering."],
-      ["<code>renderOrders()</code>", "Orders route", "Loads meals, orders, week headers, sort state, focus state, and fixed Meal/Rating/Count columns."],
-      ["<code>renderDetail(id)</code>", "Meal detail route", "Meal id."],
-      ["<code>formMarkup(meal)</code>", "Add/Edit meal", "Existing meal object or defaults for a new meal."],
-      ["<code>renderForm(id)</code>", "Add/Edit routes", "Optional meal id for edit mode."],
-      ["<code>wireImageInput()</code>", "Add/Edit meal", "DOM drop zones and focused image fields."],
-      ["<code>referenceImageMarkup(label, url)</code>", "Meal detail", "Reference image label and saved image URL."],
-      ["<code>renderDocs(page)</code>", "Documentation routes", "Docs page key from the URL."],
-    ])}
-    <section class="docs-section">
-      <h2>Shared UI Inputs</h2>
-      ${docsTable(["Helper", "Accepted values"], [
-        ["<code>select(name, options, value, label)</code>", "Field name, option array, selected value, visible label."],
-        ["<code>badgeClass(rating)</code>", "<code>Favourite</code>, <code>Fine</code>, <code>Avoid</code>, or <code>Not rated</code>."],
-        ["<code>formatDate(date)</code>", "ISO date string or empty value."],
-        ["<code>thursdayWeekStart(value)</code>", "Date object or ISO date string; returns the Thursday week date."],
-      ])}
-    </section>
-  `;
-}
-
-function dataFlowDocs() {
-  return `
-    <h2>Data Flow</h2>
-    <section class="docs-section">
-      <h2>Add Or Edit Meal</h2>
-      ${docsCode([
-        "User fills meal form",
-        "  -> FormData is converted to JSON in renderForm()",
-        "  -> POST /api/meals or PUT /api/meals/:id",
-        "  -> validateMeal() applies required fields, enum checks, and week validation",
-        "  -> Supabase Postgres meals row is inserted or updated",
-        "  -> API returns { meal }",
-        "  -> Browser navigates to the meal detail route",
-      ].join("\n"))}
-    </section>
-    <section class="docs-section">
-      <h2>Image Upload</h2>
-      ${docsCode([
-        "User pastes, drops, selects, or enters an image URL",
-        "  -> wireImageInput() identifies the active Meal, Ingredients, or Nutrition field",
-        "  -> uploadFile() reads the image as a data URL",
-        "  -> POST /api/uploads/image",
-        "  -> saveUploadedImage() uploads the file into Supabase Storage",
-        "  -> API returns a Supabase Storage URL",
-        "  -> The matching URL input and preview are updated",
-      ].join("\n"))}
-    </section>
-    <section class="docs-section">
-      <h2>Dinner Order Flow</h2>
-      ${docsCode([
-        "User selects a Thursday week and searches for an existing dinner meal",
-        "  -> renderOrders() resolves the meal name",
-        "  -> POST /api/orders with meal_id and ordered_week_start_date",
-        "  -> createOrder() normalizes the date to Thursday",
-        "  -> meal_orders row is inserted if not already present",
-        "  -> GET /api/orders reloads weeks, orders, meal counts, and ratings",
-        "  -> Table rerenders while preserving focus and scroll position",
-      ].join("\n"))}
-    </section>
-    <section class="docs-section">
-      <h2>Authentication</h2>
-      <p>There is no authentication in the MVP. The app is intended for personal use on this PC, and the local URL is unprotected while the server is running.</p>
-    </section>
-  `;
-}
-
-function apiDocs() {
-  return `
-    <h2>API Documentation</h2>
-    ${docsTable(["Method", "Endpoint", "Inputs", "Output"], [
-      ["GET", "<code>/api/meals</code>", "Query: <code>search</code>, <code>rating</code>, <code>meal_type</code>, <code>status</code>, <code>season</code>, <code>week_number</code>, <code>weekly</code>, <code>sort</code>", "<code>{ meals: Meal[] }</code>"],
-      ["POST", "<code>/api/meals</code>", "Meal JSON body.", "<code>{ meal: Meal }</code>"],
-      ["GET", "<code>/api/meals/:id</code>", "Meal id in route.", "<code>{ meal: Meal }</code> with <code>order_history</code>."],
-      ["PUT", "<code>/api/meals/:id</code>", "Full meal JSON body.", "<code>{ meal: Meal }</code>"],
-      ["PATCH", "<code>/api/meals/:id/rating</code>", "<code>{ rating }</code>", "<code>{ meal: Meal }</code>"],
-      ["PATCH", "<code>/api/meals/:id/remove</code>", "Meal id in route.", "<code>{ meal: Meal }</code> with status Removed."],
-      ["POST", "<code>/api/uploads/image</code>", "<code>{ dataUrl, filename }</code>", "<code>{ image_url }</code>"],
-      ["GET", "<code>/api/orders</code>", "None.", "<code>{ meals, orders, weeks }</code>"],
-      ["POST", "<code>/api/orders</code>", "<code>{ meal_id, ordered_week_start_date }</code>", "Updated orders payload."],
-      ["PUT/PATCH", "<code>/api/orders/:id</code>", "<code>{ ordered_week_start_date }</code>", "<code>{ order }</code>"],
-      ["DELETE", "<code>/api/orders/:id</code>", "Order id in route.", "<code>{ order }</code>"],
-    ])}
-    <section class="docs-section">
-      <h2>Example Usage</h2>
-      ${docsCode([
-        "// Find active favourite dinners",
-        "fetch('/api/meals?status=Active&rating=Favourite&meal_type=Dinner')",
-        "  .then((response) => response.json())",
-        "  .then(({ meals }) => console.log(meals));",
-        "",
-        "// Add an existing dinner meal to a Thursday week",
-        "fetch('/api/orders', {",
-        "  method: 'POST',",
-        "  headers: { 'Content-Type': 'application/json' },",
-        "  body: JSON.stringify({ meal_id: '<meal-id>', ordered_week_start_date: '2026-04-23' }),",
-        "});",
-      ].join("\n"))}
-    </section>
-    <section class="docs-section">
-      <h2>Validation Rules</h2>
-      <ul>
-        <li><code>meal_name</code> is required and must be 200 characters or fewer.</li>
-        <li><code>meal_type</code> must be Dinner, Breakfast, or Lunch.</li>
-        <li><code>rating</code> must be Favourite, Fine, Avoid, or Not rated.</li>
-        <li><code>status</code> must be Active or Removed.</li>
-        <li><code>week_number</code> is optional, but must be a positive integer when present.</li>
-        <li>Dinner orders normalize dates to the Thursday week start.</li>
-      </ul>
-    </section>
-  `;
-}
-
-function dependenciesDocs() {
-  return `
-    <h2>External Dependencies</h2>
-    <p>The MVP intentionally has a very small dependency surface. There are no third-party services, hosted databases, auth providers, or package dependencies declared in <code>package.json</code>.</p>
-    ${docsTable(["Dependency", "Used by", "Why it exists", "If removed"], [
-      ["Node.js", "<code>server.js</code>", "Runs the HTTP server and built-in modules.", "The app cannot serve pages or APIs."],
-      ["Supabase Postgres", "<code>server.js</code>", "Stores meal and order data for local and Vercel runtime.", "Meal and order data cannot be loaded or saved."],
-      ["Supabase Storage", "<code>server.js</code>", "Stores meal, ingredients, and nutrition images.", "Image uploads fail and saved image URLs cannot be generated."],
-      ["<code>node:sqlite</code>", "<code>scripts/export-sqlite-backup.js</code>", "Provides read-only export of old local SQLite data.", "Old SQLite data cannot be exported by the backup script."],
-      ["SQLite file", "<code>data/meals.sqlite</code>", "Legacy migration source only.", "Existing old local data cannot be exported unless already migrated."],
-      ["Browser Fetch API", "<code>api()</code> helper", "Calls local REST endpoints from the frontend.", "The UI cannot load or save app data."],
-      ["Browser FileReader API", "<code>uploadFile()</code>", "Converts selected, dropped, and pasted images into uploadable data URLs.", "Image paste/file upload previews stop working."],
-      ["Browser FormData API", "<code>renderForm()</code> and <code>renderOrders()</code>", "Collects form inputs for meal and order saves.", "Forms require manual field collection."],
-      ["Local filesystem", "<code>public/</code> static files and legacy export files", "Serves frontend assets and keeps old export sources available.", "The app shell or legacy export path is unavailable."],
-      ["Supabase/Postgres", "<code>server.js</code> and <code>supabase/migrations/</code>", "Vercel-compatible runtime target for meal and order data.", "Meal and order APIs cannot read or write deployed data."],
-      ["Supabase Storage", "<code>meal-images</code> bucket", "Vercel-compatible runtime target for meal, ingredients, and nutrition images.", "Uploaded images cannot be saved or displayed through Storage URLs."],
-    ])}
-    <section class="docs-section">
-      <h2>Package Scripts</h2>
-      ${docsCode([
-        "npm start",
-        "  Runs node server.js at http://localhost:4173 by default.",
-        "",
-        "node scripts/export-sqlite-backup.js",
-        "  Creates a read-only Supabase migration snapshot in backup/exports/.",
-        "",
-        "npm run export:backup",
-        "  Runs the same export script when npm is available.",
-      ].join("\n"))}
-    </section>
-  `;
-}
-
-async function docsMetrics() {
-  try {
-    const [mealData, orderData] = await Promise.all([
-      api("/api/meals?status=All&rating=All&meal_type=All&sort=meal_name"),
-      api("/api/orders"),
-    ]);
-    return { meals: mealData.meals || [], orders: orderData.orders || [] };
-  } catch {
-    return { meals: [], orders: [] };
-  }
-}
-
-async function renderDocs(page = "home") {
-  const validPage = docsPages.some(([key]) => key === page) ? page : "home";
-  const contentByPage = {
-    home: () => docsHomeContent,
-    architecture: () => architectureDocs,
-    components: () => componentsDocs,
-    "data-flow": () => dataFlowDocs,
-    api: () => apiDocs,
-    dependencies: () => dependenciesDocs,
-  };
-  const metrics = validPage === "home" ? await docsMetrics() : null;
-  const content = validPage === "home" ? docsHomeContent(metrics) : contentByPage[validPage]()();
-  layout(`
-    ${pageHeader("Documentation Center", "Living reference for the Meal Tracker app.")}
-    ${docsShell(validPage, content)}
-  `);
-}
 async function route() {
   try {
     const path = currentRoutePath();
@@ -1213,9 +911,6 @@ async function route() {
     if (path === "#/meals") return renderMeals();
     if (path === "#/orders") return renderOrders();
     if (path === "#/add") return renderForm();
-    if (path === "/docs") return renderDocs("home");
-    const docs = /^\/docs\/([^/]+)$/.exec(path);
-    if (docs) return renderDocs(docs[1]);
     const detail = /^#\/meal\/(.+)$/.exec(path);
     if (detail) return renderDetail(detail[1]);
     const edit = /^#\/edit\/(.+)$/.exec(path);

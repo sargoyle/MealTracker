@@ -8,6 +8,7 @@ create extension if not exists pg_trgm;
 create table if not exists public.meals (
   id uuid primary key default gen_random_uuid(),
   meal_name text not null check (char_length(meal_name) <= 200),
+  meal_provider text,
   meal_type text not null default 'Dinner' check (meal_type in ('Dinner', 'Breakfast', 'Lunch')),
   image_url text,
   ingredients_image_url text,
@@ -23,6 +24,7 @@ create table if not exists public.meals (
     or day_available in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
   ),
   status text not null default 'Active' check (status in ('Active', 'Removed')),
+  archive boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -59,6 +61,7 @@ for each row
 execute function public.set_updated_at();
 
 create index if not exists meals_status_idx on public.meals (status);
+create index if not exists meals_archive_idx on public.meals (archive);
 create index if not exists meals_rating_idx on public.meals (rating);
 create index if not exists meals_meal_type_idx on public.meals (meal_type);
 create index if not exists meals_status_rating_idx on public.meals (status, rating);
@@ -69,7 +72,7 @@ create index if not exists meals_name_trgm_idx on public.meals using gin (lower(
 create index if not exists meals_default_sort_idx
   on public.meals ((case rating when 'Avoid' then 1 else 0 end), lower(meal_name));
 create index if not exists meals_active_dinner_sort_idx
-  on public.meals (status, meal_type, (case rating when 'Avoid' then 1 else 0 end), lower(meal_name));
+  on public.meals (status, meal_type, archive, (case rating when 'Avoid' then 1 else 0 end), lower(meal_name));
 
 create index if not exists meal_orders_meal_date_desc_idx
   on public.meal_orders (meal_id, ordered_week_start_date desc);
@@ -80,6 +83,7 @@ create or replace view public.meal_with_stats as
 select
   m.id,
   m.meal_name,
+  m.meal_provider,
   m.meal_type,
   m.image_url,
   m.ingredients_image_url,
@@ -92,6 +96,7 @@ select
   m.week_number,
   m.day_available,
   m.status,
+  m.archive,
   m.created_at,
   m.updated_at,
   count(o.id)::integer as order_count

@@ -27,6 +27,7 @@ This file is the source of truth for implementation order. It follows the produc
 - [x] Remove temporary verification data after user confirmation.
 - [x] Remove seeded example/test meals from the active database after user approval.
 - [x] Add `ingredients_image_url` and `nutrition_image_url` fields for pasted reference images.
+- [x] Add `meal_provider` and `archive` fields to Supabase meal records.
 - [x] Add `meal_orders` table for dinner order history by Thursday week.
 - [x] Derive latest ordered date and order count from order history.
 - [x] Make legacy Last Ordered migration idempotent so restarts do not add extra order rows.
@@ -72,10 +73,12 @@ This file is the source of truth for implementation order. It follows the produc
 - [x] Preserve Orders table focus and scroll position after sorting by a Thursday column.
 - [x] Orders screen Count column can be clicked to sort by total order count.
 - [x] Orders screen keeps Meal, Rating, and Count columns locked while only Thursday date columns scroll.
+- [x] Orders screen filters archived meals out of the dinner ordering table.
 - [x] Show ingredients and nutritional information images on meal detail screens.
 - [x] Meal detail screen shows full order history.
 - [x] Meal detail order history shows the order count and avoids repeating the same date twice.
 - [x] Add routable Documentation Center pages for overview, architecture, components, data flow, API, and dependencies.
+- [x] Remove the in-app Docs page and Docs navigation item.
 
 ## 6. Meal Form Behaviour
 
@@ -92,6 +95,8 @@ This file is the source of truth for implementation order. It follows the produc
 - [x] Add explicit calendar picker button for Last Ordered Date while keeping direct typing.
 - [x] Remove editable Last Ordered Date from meal form after order history was introduced.
 - [x] Add editable order history dates to the Meal Edit page.
+- [x] Add Meal Provider and Archive fields to the Add/Edit meal form.
+- [x] Fix Archive checkbox saving from the Meal Edit page.
 - [x] Refresh `updated_at` on edit.
 
 ## 7. Filtering And Decision Support
@@ -106,6 +111,7 @@ This file is the source of truth for implementation order. It follows the produc
 - [x] Sort by rating.
 - [x] Default meal-name sort keeps Favourite, Fine, and Not rated together alphabetically, with Avoid meals at the bottom.
 - [x] Add collapsible Meals page filter controls to reduce vertical space.
+- [x] Add retained Show Archived meals checkbox to the Meals screen.
 - [x] Make Avoid meals visually obvious.
 
 ## 8. Responsive Dark UI
@@ -135,6 +141,7 @@ This file is the source of truth for implementation order. It follows the produc
 - [x] Verify Orders API returns only Thursday week headers with data.
 - [x] Verify Orders API can update an existing order date.
 - [x] Verify Documentation Center routes respond at `/docs` and `/docs/architecture`.
+- [x] Verify frontend syntax after removing in-app Docs routes.
 - [x] Verify edit flow manually in browser.
 - [x] Verify mark-as-removed flow manually in browser.
 - [x] Verify pasted screenshot persists after refresh.

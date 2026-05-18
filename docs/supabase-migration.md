@@ -21,6 +21,14 @@ Apply this file in Supabase:
 supabase/migrations/202605120001_create_meal_tracker_schema.sql
 ```
 
+Existing projects that already have the first schema should also apply:
+
+```text
+supabase/migrations/202605180001_add_provider_archive_to_meals.sql
+```
+
+This follow-up migration drops and recreates `meal_with_stats` so the new `meal_provider` and `archive` fields are exposed through the API, then asks PostgREST to reload its schema cache.
+
 It creates:
 
 - `public.meals`
@@ -39,6 +47,7 @@ Option 1, Supabase dashboard:
 4. Paste the full SQL into the editor.
 5. Run it once.
 6. Confirm `meals`, `meal_orders`, and `meal_with_stats` exist in the `public` schema.
+7. If the project already existed before meal provider/archive support, also paste and run `supabase/migrations/202605180001_add_provider_archive_to_meals.sql`.
 
 Option 2, Supabase CLI later:
 
