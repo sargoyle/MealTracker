@@ -28,6 +28,9 @@ This file is the source of truth for implementation order. It follows the produc
 - [x] Remove seeded example/test meals from the active database after user approval.
 - [x] Add `ingredients_image_url` and `nutrition_image_url` fields for pasted reference images.
 - [x] Add `meal_provider` and `archive` fields to Supabase meal records.
+- [x] Set all existing Supabase meal records to Archived = Yes after user request.
+- [x] Import current Soulara Medium meals into Supabase from the Soulara collection page.
+- [x] Append per-serve energy in Cal and kJ to imported Soulara meal names.
 - [x] Add `meal_orders` table for dinner order history by Thursday week.
 - [x] Derive latest ordered date and order count from order history.
 - [x] Make legacy Last Ordered migration idempotent so restarts do not add extra order rows.
